@@ -5,7 +5,7 @@
 ###################################################
 ###########################   by Adriana F. Chavez
 
-myCDDMsimData.getCoord <- function(trials, mu.1, mu.2, sigma.driftrate, thresh){
+myCDDMsimData.randomWalk <- function(trials, mu.1, mu.2, sigma.driftrate, thresh){
     state <- array(NA, dim = c(iter, 2, trials))   #States are saved in a 3dimensional array
     finalT <- NA #An additional empty vector to store RT (a.k.a. total number of iterations)
     
@@ -43,6 +43,11 @@ myCDDMsimData.getCoord <- function(trials, mu.1, mu.2, sigma.driftrate, thresh){
     }
 }
 
+myCDDMsimData.getCoordinates <- function(randomWalk){
+   end <- nrow(randomWalk)
+   coord <- randomWalk[end,,]
+   return(coord)
+}
 
 myCDDMsimData.getDegrees <-  function(x,y){   
     theta <- atan2(y,x) * 180 / pi  #Angle with respect of y=0
@@ -57,3 +62,13 @@ myCDDMsimData.getRadians <- function(theta.d){
     return(theta)
 }
 
+
+myCDDMsimData.simData <- function(trials, mu.1, mu.2, sigma.driftrate, thresh){
+      randomWalk <-  myCDDMsimData.randomWalk(trials,mu.1,mu.2,sigma.driftrate,thresh)
+      coord <-
+      degrees <-
+      radians <-
+        
+        
+      
+}
