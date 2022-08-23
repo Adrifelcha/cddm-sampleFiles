@@ -1,6 +1,8 @@
+library(R2jags)  #Load up packages
+load.module("cddm")
+
 datos <- read.csv("./toyData.csv")
 datos <- t(datos)
-datos <- 
 
 n.chains = 2
 n.iter = 1000 
