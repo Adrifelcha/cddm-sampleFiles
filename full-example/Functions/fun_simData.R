@@ -4,7 +4,7 @@
 #####   the Circular Drift Diffusion Model
 ########################################################
 ###########################   by Adriana F. Chavez   ###
-source("./fun_genParameters.R")
+source("../full-example/Functions/fun_genParameters.R")
 library(plotrix) #Library to draw circles
 
 # Variable dictionary: ##################################################
@@ -22,7 +22,7 @@ library(plotrix) #Library to draw circles
 # Simulate the full random walk across many trials (for each trial, 
 # keeps the full chain of coordinates visited and response times)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.015){
+cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
       sqDT <- sqrt(dt)
       s.init <- c(0,0) 
       iter <- 20000  # Maximum number of iterations on the random walk process
@@ -61,6 +61,7 @@ cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt
                     state[t,,a] <- circunf
               }
       }
+      
   finalT <- finalT*dt
   output <- list(state,finalT)
   names(output) <- c("state","RT")
@@ -107,7 +108,7 @@ cddm.coordToDegrees <-  function(coord){
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.15){
+cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.015){
   
       Mu <- cddm.polarToRect(drift.Angle,drift.Length)
       mu1 <- Mu$mu1
@@ -120,6 +121,7 @@ cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drif
       coord <- cddm.getFinalState(randomWalk)
       degrees <- cddm.coordToDegrees(coord)
       radians <- cddm.degToRad(degrees)
+      radians <- round(radians,2)
       
       data <- as.data.frame(cbind(radians,RT))
       colnames(data) <- c("Choice","RT")
