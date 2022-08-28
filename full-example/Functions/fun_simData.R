@@ -5,6 +5,7 @@
 ########################################################
 ###########################   by Adriana F. Chavez   ###
 source("./fun_genParameters.R")
+library(plotrix) #Library to draw circles
 
 # Variable dictionary: ##################################################
 # mu1 and mu2 - Individual drift rates for the motion on the x and y axes
@@ -21,7 +22,7 @@ source("./fun_genParameters.R")
 # Simulate the full random walk across many trials (for each trial, 
 # keeps the full chain of coordinates visited and response times)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myCDDMsimData.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.15){
+cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.015){
       sqDT <- sqrt(dt)
       s.init <- c(0,0) 
       iter <- 20000  # Maximum number of iterations on the random walk process
@@ -60,7 +61,7 @@ myCDDMsimData.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Co
                     state[t,,a] <- circunf
               }
       }
-  finalT <- finalT*ndt
+  finalT <- finalT*dt
   output <- list(state,finalT)
   names(output) <- c("state","RT")
   return(output)
@@ -69,7 +70,8 @@ myCDDMsimData.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Co
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Take full random walk coordinates and extract final response
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myCDDMsimData.getCoordinates <- function(randomWalk){
+cddm.getFinalState <- function(randomWalk.states){
+   randomWalk <- randomWalk.states
    K <- nrow(randomWalk)
    I <- dim(randomWalk)[3]
    
@@ -90,7 +92,7 @@ myCDDMsimData.getCoordinates <- function(randomWalk){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Transform rectangular coordinates to degrees
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myCDDMsimData.getDegrees <-  function(coord){
+cddm.coordToDegrees <-  function(coord){
     x <- coord[,1]
     y <- coord[,2]
     theta <- atan2(y,x) * 180 / pi  #Angle with respect of y=0
@@ -101,33 +103,103 @@ myCDDMsimData.getDegrees <-  function(coord){
   return(theta)
 }
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Transform degrees into radians
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myCDDMsimData.getRadians <- function(theta.d){  
-    theta <-  theta.d * pi /180  #Transform to radians
-    return(theta)
-}
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myCDDMsimData.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.15){
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.15){
   
-      Mu <- myCDDM.getRectCoordinates(drift.Angle,drift.Length)
+      Mu <- cddm.polarToRect(drift.Angle,drift.Length)
       mu1 <- Mu$mu1
       mu2 <-Mu$mu2
   
-      randomWalk <-  myCDDMsimData.randomWalk(trials,mu1=mu1,mu2=mu2,drift.Coeff,thresh)
+      randomWalk <-  cddm.randomWalk(trials=trials,mu1=mu1,mu2=mu2,thresh=thresh,
+                                     ndt=ndt,drift.Coeff=drift.Coeff,dt=dt)
       RT <- randomWalk$RT
       randomWalk <- randomWalk$state
-      coord <- myCDDMsimData.getCoordinates(randomWalk)
-      degrees <- myCDDMsimData.getDegrees(coord)
-      radians <- myCDDMsimData.getRadians(degrees)
+      coord <- cddm.getFinalState(randomWalk)
+      degrees <- cddm.coordToDegrees(coord)
+      radians <- cddm.degToRad(degrees)
       
       data <- as.data.frame(cbind(radians,RT))
       colnames(data) <- c("Choice","RT")
       
   return(data)
+}
+
+############################################################################
+#####  Plotting functions
+############################################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Plot the random walk (and RT distribution) from cddm.randomWalk()
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cddm.plotRW <- function(randomWalk){
+  state  <- randomWalk$state
+  finalT <- randomWalk$RT
+  trials <- length(finalT)
+  choices <- cddm.getFinalState(state)
+  thresh <- cddm.getVectorLength(choices[1,1],choices[1,2])
+  thresh <- round(thresh,2)
+  
+  par(mfrow = c(1,2))  # Open space for 2 plots
+  pm <- thresh+0.5 #Plot margin
+  plot(-10:10,-10:10,type="n", ann = FALSE, axes = FALSE,
+       xlim=c(-pm,pm),ylim=c(-pm,pm))
+  for(b in 1:trials){
+      points(state[,,b], type = "l", col=rgb(1,0,0.5,0.1))
+  }
+  draw.circle(0,0,radius = thresh, border = "black")
+  abline(h = 0, lty=2, col="gray50")
+  abline(v = 0, lty=2, col="gray50")
+  legend("topright",paste("No. trials =", trials), 
+         pch=16, col="white",bty = "n", cex=0.8)
+  for(b in 1:trials){
+      points(choices[b,1],choices[b,2], type = "p", pch =16, cex=0.9,
+             col=rgb(0.75,0.25,0.5,0.2))
+  }
+  
+  hist(finalT, col = "darkorchid4", breaks = 100, ann=FALSE, axes=FALSE)
+  mtext("Response Times", 1, line=2, f=2)
+  mtext("Frequency", 2, line = 2.5, cex=0.8)
+  axis(2, seq(0,50,5), seq(0,50,5), las=2)
+  axis(1, seq(0,3000,250),seq(0,3000,250))
+  
+  par(mfrow = c(1,1)) #As a precaution, go back to single plot spaces
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Plot  observed choices and RT
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cddm.plotData <- function(simData){
+      choice <- simData$Choice
+      RT <- simData$RT
+      trials <- length(RT)
+      
+      direction <- cddm.radToDeg(choice) # Transform radian choices into degrees
+      thresh <- 9 # Arbitrary radius, used to define magnitude
+      magnitude <- rep(thresh,length(choice)) 
+      coord.on.circumference <- cddm.polarToRect(choice,magnitude) #get Rectangular coordinates
+      
+      par(mfrow = c(1,2))  # Open space for 2 plots
+      
+      plot(-10:10,-10:10,type="n", ann = FALSE, axes = FALSE)
+      for(b in 1:trials){
+        points(coord.on.circumference[b,1],coord.on.circumference[b,2], 
+               type = "p", pch =16, cex=0.9,
+               col=rgb(0.75,0.25,0.5,0.2))
+      }
+      draw.circle(0,0,radius = thresh, border = "black")
+      abline(h = 0, lty=2, col="gray50")
+      abline(v = 0, lty=2, col="gray50")
+      legend("topright",paste("No. trials =", trials), 
+             pch=16, col="white",bty = "n", cex=0.8)
+      
+      hist(RT, col = "darkorchid4", breaks = 100, ann=FALSE, axes=FALSE)
+      mtext("Response Times", 1, line=2, f=2)
+      mtext("Frequency", 2, line = 2.5, cex=0.8)
+      axis(2, seq(0,50,5), seq(0,50,5), las=2)
+      axis(1, seq(0,3000,250),seq(0,3000,250))
+      
+      par(mfrow = c(1,1)) #As a precaution, go back to single plot spaces
 }
