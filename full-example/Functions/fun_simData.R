@@ -158,11 +158,13 @@ cddm.plotRW <- function(randomWalk){
              col=rgb(0.75,0.25,0.5,0.2))
   }
   
+  maxRT <- max(finalT)+5
+  x.axis <- round(c(0,seq(0,maxRT,length.out=10)),2)
   hist(finalT, col = "darkorchid4", breaks = 50, ann=FALSE, axes=FALSE)
   mtext("Response Times", 1, line=2, f=2)
   mtext("Frequency", 2, line = 2.5, cex=0.8)
   axis(2, seq(0,trials,5), seq(0,trials,5), las=2)
-  axis(1, seq(0,10,0.25), seq(0,10,0.25))
+  axis(1, x.axis,x.axis)
   
   par(mfrow = c(1,1)) #As a precaution, go back to single plot spaces
 }
@@ -195,11 +197,13 @@ cddm.plotData <- function(simData){
       legend("topright",paste("No. trials =", trials), 
              pch=16, col="white",bty = "n", cex=0.8)
       
+      maxRT <- max(RT)+5
+      x.axis <- round(c(0,seq(0,maxRT,length.out=10)),2)
       hist(RT, col = "darkorchid4", breaks = 50, ann=FALSE, axes=FALSE)
       mtext("Response Times", 1, line=2, f=2)
       mtext("Frequency", 2, line = 2.5, cex=0.8)
       axis(2, seq(0,trials,5), seq(0,trials,5), las=2)
-      axis(1, seq(0,10,0.25), seq(0,10,0.25))
+      axis(1, x.axis,x.axis)
       
       par(mfrow = c(1,1)) #As a precaution, go back to single plot spaces
 }
