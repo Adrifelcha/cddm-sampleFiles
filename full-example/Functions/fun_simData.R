@@ -129,6 +129,8 @@ cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drif
 
 ############################################################################
 #####  Plotting functions
+#####  Note: The margins of the plotting space may need to be adjusted to 
+#####        fully appreciate the symmetry of the circle drawn on screen.
 ############################################################################
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot the random walk (and RT distribution) from cddm.randomWalk()
