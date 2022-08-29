@@ -6,7 +6,7 @@
 
 A brief and didactic presentation of the Circular Drift Diffussion Model.
 
-### root/Functions/
+### /Functions/
 
 A set of Rscripts to load specific functions build to generate parameter values, simulate data, load and run a JAGS model using the cddm module, and check the posterior samples.
 
