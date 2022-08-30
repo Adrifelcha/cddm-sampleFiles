@@ -4,8 +4,8 @@ load.module("cddm")
 datos <- read.csv("./toyData.csv")
 datos <- t(datos)
 
-n.chains = 2
-n.iter = 1000 
+n.chains = 1
+n.iter = 100 
 n.burnin = 0
 n.thin = 1
 
@@ -22,7 +22,7 @@ modelFile <- "cddm.bug"
                       
                   # Priors
                     drift ~ dnorm(0,1)T(0,)
-                    bound ~ dunif(0,1000)
+                    bound ~ dunif(0,4)
                     ter0 ~ dexp(1)
                     theta0 ~ dunif(0,6.283185)
                   }',
