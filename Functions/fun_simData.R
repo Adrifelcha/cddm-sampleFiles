@@ -4,7 +4,6 @@
 #####   the Circular Drift Diffusion Model
 ###############################################################################
 ########################################################   by Adriana F. Chavez   
-library(plotrix) #Library to draw circles
 
 # Variable dictionary: ##################################################
 # mu1 and mu2 - Individual drift rates for the motion on the x and y axes
@@ -24,20 +23,19 @@ library(plotrix) #Library to draw circles
 cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.00015){
   sqDT <- sqrt(dt)
   s.init <- c(0,0) 
-  iter <- 30/dt  # Maximum number of iterations on the random walk process
+  iter <- 15/dt  # Maximum number of iterations on the random walk process
   state <- array(NA, dim = c(iter, 2, trials))   #States are saved in a 3dimensional array
   finalT <- NA #An additional empty vector to store RT (a.k.a. total number of iterations)
   
-  
-  stepsizes <- rnorm(trials*iter*2,0,1)*(drift.Coeff*sqDT)
-  stepsizes <- array(stepsizes,dim = c(iter,2,trials))
+  random_stepsizes <- rnorm(trials*iter*2,0,1)*(drift.Coeff*sqDT)
+  motion <- array(random_stepsizes,dim = c(iter,2,trials))
   
   for(a in 1:trials){  
     state[1,,a] <- s.init   # States are stored in 3D array
     
     for(t in 2:iter){
-      d1 <- (stepsizes[t,1,a])+(mu1*dt)
-      d2 <- (stepsizes[t,2,a])+(mu2*dt)
+      d1 <- motion[t,1,a]+(mu1*dt)
+      d2 <- motion[t,2,a]+(mu2*dt)
       state[t,,a] <- state[t-1,,a]+c(d1,d2)
       pass <- sqrt(sum(state[t,,a]^2))
       
@@ -48,20 +46,12 @@ cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt
     }
     
     if(pass > thresh){
-      digits.in.threshold <- nchar(sub('.*\\.', '', thresh))
-      d <- digits.in.threshold
-      A <- state[t-1,,a];  B <- state[t,,a]
-      last.step.x <- seq(A[1],B[1],length.out = 10^(d+1))
-      last.step.y <- seq(A[2],B[2],length.out = 10^(d+1))
-      
-      for(i in 1:length(last.step.x)){
-        pass2 <- sqrt(last.step.x[i]^2+last.step.y[i]^2)
-        if(round(pass2,d) == thresh){
-          circunf <- c(last.step.x[i],last.step.y[i])
-          break
-        }
-      }
-      state[t,,a] <- circunf
+      get.Angle <- cddm.coordToDegrees(c(state[t,1,a],state[t,2,a]))
+      get.Radians <- cddm.degToRad(get.Angle)
+      final.coord <- cddm.polarToRect(get.Radians,thresh)
+      final.x <- final.coord$mu1
+      final.y <- final.coord$mu2
+      state[t,,a] <- c(final.x,final.y)
     }
   }
   
@@ -97,8 +87,17 @@ cddm.getFinalState <- function(randomWalk.states){
 # Transform rectangular coordinates to degrees
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 cddm.coordToDegrees <-  function(coord){
-  x <- coord[,1]
-  y <- coord[,2]
+  D <- length(dim(coord))
+      if(D==0){
+        x <- coord[1]
+        y <- coord[2]  
+      }else{if(D==2){
+          x <- coord[,1]
+          y <- coord[,2]
+      }else{if(D==3){
+            x <- coord[,1,]
+            y <- coord[,2,]
+      }}}
   theta <- atan2(y,x) * 180 / pi  #Angle with respect of y=0
   while(sum(theta<0)>0){
     theta.0 <- which(theta<0)
