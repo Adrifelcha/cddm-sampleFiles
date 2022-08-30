@@ -24,5 +24,3 @@ y <- read.csv("./toyData.csv")
 # Print and plot the data
 head(y,200)
 cddm.plotData(y)
-# Note: The plotting function requires the user to adjust the margins of the 
-#       plotting space, so that the symmetry can be appreciated
