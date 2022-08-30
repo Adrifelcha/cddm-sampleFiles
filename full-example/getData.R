@@ -56,6 +56,6 @@ simulation.ID <- round(abs(runif(1,100,999)),0)
       load(parameterObject.name)
   }
 
-
-# Print and plot the data
+# Print data
 head(data)
+cddm.plotData(data)
