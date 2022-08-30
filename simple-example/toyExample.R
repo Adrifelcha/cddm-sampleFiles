@@ -4,8 +4,8 @@ load.module("cddm")
 datos <- read.csv("./toyData.csv")
 datos <- t(datos)
 
-n.chains = 2
-n.iter = 100
+n.chains = 1
+n.iter = 100 
 n.burnin = 0
 n.thin = 1
 
