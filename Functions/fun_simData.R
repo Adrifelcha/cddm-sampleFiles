@@ -21,19 +21,23 @@ library(plotrix) #Library to draw circles
 # Simulate the full random walk across many trials (for each trial, 
 # keeps the full chain of coordinates visited and response times)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
+cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.00015){
   sqDT <- sqrt(dt)
   s.init <- c(0,0) 
-  iter <- 20000  # Maximum number of iterations on the random walk process
+  iter <- 30/dt  # Maximum number of iterations on the random walk process
   state <- array(NA, dim = c(iter, 2, trials))   #States are saved in a 3dimensional array
   finalT <- NA #An additional empty vector to store RT (a.k.a. total number of iterations)
+  
+  
+  stepsizes <- rnorm(trials*iter*2,0,1)*(drift.Coeff*sqDT)
+  stepsizes <- array(stepsizes,dim = c(iter,2,trials))
   
   for(a in 1:trials){  
     state[1,,a] <- s.init   # States are stored in 3D array
     
     for(t in 2:iter){
-      d1 <- rnorm(1,mu1*dt,drift.Coeff*sqDT)
-      d2 <- rnorm(1,mu2*dt,drift.Coeff*sqDT)
+      d1 <- (stepsizes[t,1,a])+(mu1*dt)
+      d2 <- (stepsizes[t,2,a])+(mu2*dt)
       state[t,,a] <- state[t-1,,a]+c(d1,d2)
       pass <- sqrt(sum(state[t,,a]^2))
       
@@ -96,7 +100,7 @@ cddm.coordToDegrees <-  function(coord){
   x <- coord[,1]
   y <- coord[,2]
   theta <- atan2(y,x) * 180 / pi  #Angle with respect of y=0
-  if(sum(theta<0)>0){
+  while(sum(theta<0)>0){
     theta.0 <- which(theta<0)
     theta[theta.0] <- theta[theta.0]+360   #Correction for whole circle (360)
   }   
@@ -107,7 +111,7 @@ cddm.coordToDegrees <-  function(coord){
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.015){
+cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
   
   Mu <- cddm.polarToRect(drift.Angle,drift.Length)
   mu1 <- Mu$mu1
@@ -120,7 +124,7 @@ cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drif
   coord <- cddm.getFinalState(randomWalk)
   degrees <- cddm.coordToDegrees(coord)
   radians <- cddm.degToRad(degrees)
-  radians <- round(radians,2)
+  radians <- round(radians,4)
   
   data <- as.data.frame(cbind(radians,RT))
   colnames(data) <- c("Choice","RT")
@@ -133,6 +137,7 @@ cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drif
 #####  Note: The margins of the plotting space may need to be adjusted to 
 #####        fully appreciate the symmetry of the circle drawn on screen.
 ############################################################################
+all.Angles <- seq(1,2*pi,0.001)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot the random walk (and RT distribution) from cddm.randomWalk()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,6 +149,8 @@ cddm.plotRW <- function(randomWalk){
   thresh <- cddm.getVectorLength(choices[1,1],choices[1,2])
   thresh <- round(thresh,2)
   
+  circle <- cddm.polarToRect(all.Angles,thresh)
+  
   par(mfrow = c(1,2))  # Open space for 2 plots
   pm <- thresh+0.5 #Plot margin
   plot(-10:10,-10:10,type="n", ann = FALSE, axes = FALSE,
@@ -151,7 +158,7 @@ cddm.plotRW <- function(randomWalk){
   for(b in 1:trials){
     points(state[,,b], type = "l", col=rgb(1,0,0.5,0.1))
   }
-  draw.circle(0,0,radius = thresh, border = "black")
+  points(circle[,1],circle[,2], type="l")
   abline(h = 0, lty=2, col="gray50")
   abline(v = 0, lty=2, col="gray50")
   legend("topright",paste("No. trials =", trials), 
@@ -183,6 +190,7 @@ cddm.plotData <- function(simData){
   
   direction <- cddm.radToDeg(choice) # Transform radian choices into degrees
   thresh <- 9 # Arbitrary radius, used to define magnitude
+  circle <- cddm.polarToRect(all.Angles,thresh)
   magnitude <- rep(thresh,length(choice)) 
   coord.on.circumference <- cddm.polarToRect(choice,magnitude) #get Rectangular coordinates
   
@@ -194,7 +202,7 @@ cddm.plotData <- function(simData){
            type = "p", pch =16, cex=0.9,
            col=rgb(0.75,0.25,0.5,0.2))
   }
-  draw.circle(0,0,radius = thresh, border = "black")
+  points(circle[,1],circle[,2], type="l")
   abline(h = 0, lty=2, col="gray50")
   abline(v = 0, lty=2, col="gray50")
   legend("topright",paste("No. trials =", trials), 
