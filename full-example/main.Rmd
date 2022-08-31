@@ -1,0 +1,77 @@
+---
+title: "Circular Drift Difussion Model on JAGS: Full example"
+author: "JV, AFCP"
+date: '2022-07-08'
+geometry: "left=1cm,right=1cm,top=1.5cm,bottom=1.5cm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Generate/load simulated data
+
+```{r, warning=FALSE, fig.width=10,fig.height=5}
+# Establish no. of trials
+trials <- 1000
+# Call Rscript to generate simulated data / load it  if already existing
+source("./getData.R")
+```
+
+```{r}
+# Print parameter values used to generate this data
+par
+```
+
+\clearpage
+
+# 2. Write JAGS model
+
+```{r}
+modelFile <- "cddm.bug"
+write('
+            model{
+                  # Likelihood
+                    for (i in 1:N) {
+                         X[1:2,i] ~ dcddm(drift, bound, ter0, theta0)
+                    }
+                      
+                  # Priors
+                    drift ~ dnorm(0,1)T(0,)
+                    bound ~ dunif(0,5)
+                    ter0 ~ dexp(1)T(,0.4)
+                    theta0 ~ dunif(0,6.283185)
+                  }',
+      modelFile)
+```
+
+
+where: 
+
+- `drift` is the magnitude of the drift vector composed by the individual drift rates related to the average motion observed across the x and y axes, according to the CDDM.
+- `bound` is the threshold (i.e. the radius of the circle)
+- `ter0` is the non-decision time (a.k.a. "time for encoding and response")
+- `theta0` is the direction of the drift vector, in radians.
+
+# Prepare Settings to be passed to JAGS
+
+```{r}
+n.chains = 4
+n.iter = 1000
+n.burnin = 0
+n.thin = 1
+perParticipant = FALSE
+perTask = FALSE
+
+sampling.Settings <- list(n.chains,n.iter,n.burnin,n.thin,perParticipant,perTask)
+names <- c("n.chains","n.iter","n.burnin","n.thin","perParticipant","perTask")
+```
+
+# Prepare data
+
+```{r}
+X <- t(data)
+N <- ncol(X)
+```
+\clearpage
