@@ -23,7 +23,7 @@
 cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.00015){
   sqDT <- sqrt(dt)
   s.init <- c(0,0) 
-  iter <- 15/dt  # Maximum number of iterations on the random walk process
+  iter <- 10/dt  # Maximum number of iterations on the random walk process
   state <- array(NA, dim = c(iter, 2, trials))   #States are saved in a 3dimensional array
   finalT <- NA #An additional empty vector to store RT (a.k.a. total number of iterations)
   
