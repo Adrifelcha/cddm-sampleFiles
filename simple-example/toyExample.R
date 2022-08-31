@@ -23,7 +23,7 @@ modelFile <- "cddm.bug"
                   # Priors
                     drift ~ dnorm(0,1)T(0,)
                     bound ~ dunif(0,5)
-                    ter0 ~ dexp(1)
+                    ter0 ~ dexp(1)T(,0.4)
                     theta0 ~ dunif(0,6.283185)
                   }',
                       modelFile)
