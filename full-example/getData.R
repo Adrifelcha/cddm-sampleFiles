@@ -12,8 +12,14 @@ library(readr)
 
 ##########################################################################
 # General settings
-trials = 200
-ForceSample <- FALSE
+
+  if(!exists("ForceSample")){
+      ForceSample <- FALSE  # By default, do not overwrite
+    }
+  
+  if(!exists("trials")){
+      trials = 200 #Standard number of trials
+    }
 
 dataFile.name <- "data.csv"
 parameterObject.name <- "trueParValues.RData"
@@ -54,8 +60,13 @@ simulation.ID <- round(abs(runif(1,100,999)),0)
   }else{
       data <- read.csv(dataFile.name)
       load(parameterObject.name)
+      
+      if(trials!=nrow(data)){
+        print("Warning: Loading an existing datafile with a different no. of trials. To overwrite this data object with the specified no. of trials, load a variable `ForceSample <- TRUE`")
+      }
   }
+  
+  
 
-# Print data
-head(data)
+# Plot data
 cddm.plotData(data)
