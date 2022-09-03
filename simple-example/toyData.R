@@ -15,7 +15,7 @@ true.drift.Length <- cddm.getVectorLength(mu1,mu2)
 searchFile <- "./toyData.csv"
       #If file does not exist, we simulate data and write a file
       if(!file.exists(searchFile)){
-         simulateData <- cdd.simData(trials,true.drift.Angle,true.drift.Length,true.bound,true.ndt)
+         simulateData <- cddm.simData(trials,true.drift.Angle,true.drift.Length,true.bound,true.ndt)
          write.csv(simulateData,"./toyData.csv",row.names = FALSE)
       }
 

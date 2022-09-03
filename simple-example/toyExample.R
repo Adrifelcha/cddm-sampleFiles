@@ -10,7 +10,7 @@ load.module("cddm")
 source("./toyData.R")
 datos <- t(datos)
 
-X <- datos[,1:10]
+X <- datos
 N <- ncol(X)
 
 ################################################################################
@@ -36,7 +36,7 @@ write('
 # Settings to be passed to JAGS
 ################################################################################
 n.chains = 1
-n.iter = 100 
+n.iter = 1000 
 n.burnin = 0
 n.thin = 1
 
