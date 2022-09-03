@@ -110,7 +110,7 @@ cddm.coordToDegrees <-  function(coord){
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cdd.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
+cddm.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
   
   Mu <- cddm.polarToRect(drift.Angle,drift.Length)
   mu1 <- Mu$mu1
