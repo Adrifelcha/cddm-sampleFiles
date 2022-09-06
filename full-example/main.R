@@ -1,3 +1,6 @@
+################################################################################
+################################### Load data
+################################################################################
 # Establish no. of trials
 trials <- 350
 # Call Rscript to generate simulated data / load it  if already existing
@@ -5,10 +8,12 @@ source("./getData.R")
 dim(data)
 # Plot data
 cddm.plotData(data)
-
 # Print parameter values used to generate this data
 par
 
+################################################################################
+################################### Model preparation
+################################################################################
 modelFile <- "cddm.bug"
 write('
             model{
@@ -36,8 +41,20 @@ perTask = FALSE
 sampling.Settings <- list(n.chains,n.iter,n.burnin,n.thin,perParticipant,perTask)
 names(sampling.Settings) <- c("n.chains","n.iter","n.burnin","n.thin","perParticipant","perTask")
 
-# Run JAGS model
+################################################################################
+################################### Run JAGS model and evaluate chains
+################################################################################
 source("../Functions/runCDDMjags.R")
+source("../Functions/plotJAGSsamples.R")
+source("../Functions/processJAGSsamples.R")
 
 samplesFile <- "samples.RData"
-myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
+
+    if(file.exists(samplesFile)){
+      load(file=samplesFile)
+    }else{
+      myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
+    }
+
+plot.ShowAllChains(samples)
+myJAGSsampling.Rhat.max(samples)

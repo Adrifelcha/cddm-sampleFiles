@@ -80,8 +80,21 @@ names(sampling.Settings) <- c("n.chains","n.iter","n.burnin","n.thin","perPartic
 source("../Functions/runCDDMjags.R")
 
 samplesFile <- "samples.RData"
-myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
+
+if(file.exists(samplesFile)){
+   load(file=samplesFile)
+}else{
+   myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)}
 ```
 
-
 \clearpage
+
+```{r}
+source("../Functions/plotJAGSsamples.R")
+plot.ShowAllChains(samples)
+```
+
+```{r}
+source("../Functions/processJAGSsamples.R")
+myJAGSsampling.Rhat.max(samples)
+```
