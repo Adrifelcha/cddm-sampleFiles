@@ -3,7 +3,7 @@
 #####   Functions to load and process JAGS samples  ############################
 ################################################################################
 #########################################################   by Adriana F. Chavez
-
+library(rstan)
 
 ################################################################################
 ##### SAMPLE EXTRACTION
@@ -211,5 +211,5 @@ myJAGSsampling.Rhat.max <- function(samples,maxRhat = 1.05){
   }
   max <- max(Rhats)
   maxChain <- names(Rhats[which(Rhats==max(Rhats))])
-  return(paste("The maximum value of Rhat observed was ", round(max,4), " which corresponds to parameter ", maxChain))
+  return(paste("The maximum value of Rhat observed was ", round(max,4), " which corresponds to: ", maxChain))
 }
