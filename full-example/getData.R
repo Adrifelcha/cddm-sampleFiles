@@ -49,10 +49,10 @@ simulation.ID <- round(abs(runif(1,100,999)),0)
       save(par,file=parameterObject.name)
       
       # Load parameters
-      drift.Angle <- par$driftAngle
-      drift.Length <- par$driftLength
-      thresh <- par$thresh
-      ndt <- par$ndt
+      drift.Angle <- par["true.theta0"]
+      drift.Length <- par["true.drift"]
+      thresh <- par["true.bound"]
+      ndt <- par["true.ter0"]
       
       # Generate data
       data <- cddm.simData(trials,drift.Angle,drift.Length,thresh,ndt)
