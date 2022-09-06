@@ -213,3 +213,16 @@ myJAGSsampling.Rhat.max <- function(samples,maxRhat = 1.05){
   maxChain <- names(Rhats[which(Rhats==max(Rhats))])
   return(paste("The maximum value of Rhat observed was ", round(max,4), " which corresponds to: ", maxChain))
 }
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Get the maximum density point for a single vector of posterior samples
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+JAGSoutput.maxDensity <- function(vector){
+  x.Density <- density(vector)$x
+  y.Density <- density(vector)$y
+  MAP = x.Density[y.Density==max(y.Density)]
+  MAP = round(MAP,3)
+  return(MAP)
+}
