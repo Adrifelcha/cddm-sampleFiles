@@ -3,7 +3,8 @@
 #####   Functions for run the CDDM module in  JAGS  ############################
 ################################################################################
 #########################################################   by Adriana F. Chavez
-library(R2jags)  #Load up packages
+library(R2jags)  
+load.module("cddm")
 
 ################################################################################
 ##### Run a CDDM implementation calling JAGS
