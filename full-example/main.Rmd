@@ -1,8 +1,7 @@
 ---
 title: "Circular Drift Difussion Model on JAGS: Full example"
-author: "JV, AFCP"
-date: '2022-07-08'
-geometry: "left=1cm,right=1cm,top=1.5cm,bottom=1.5cm"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+geometry: "left=1.25cm,right=1.25cm,top=1.25cm,bottom=1.25cm"
 output: pdf_document
 ---
 
@@ -12,12 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # 1. Generate/load simulated data
 
-```{r, warning=FALSE, fig.width=10,fig.height=5}
+\vspace{-0.2in}
+
+```{r, warning=FALSE, fig.width=7,fig.height=4, fig.align='center'}
 # Establish no. of trials
-trials <- 1000
+trials <- 350
 # Call Rscript to generate simulated data / load it  if already existing
 source("./getData.R")
+dim(data)
+# Plot data
+cddm.plotData(data)
 ```
+
+\vspace{-0.5in}
 
 ```{r}
 # Print parameter values used to generate this data
