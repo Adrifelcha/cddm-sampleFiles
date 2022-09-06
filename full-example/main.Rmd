@@ -71,7 +71,7 @@ perParticipant = FALSE
 perTask = FALSE
 
 sampling.Settings <- list(n.chains,n.iter,n.burnin,n.thin,perParticipant,perTask)
-names <- c("n.chains","n.iter","n.burnin","n.thin","perParticipant","perTask")
+names(sampling.Settings) <- c("n.chains","n.iter","n.burnin","n.thin","perParticipant","perTask")
 ```
 
 # Run JAGS model
