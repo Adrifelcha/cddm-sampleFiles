@@ -15,8 +15,8 @@ cddm.generateParameters <- function(){
         driftAngle <- round(runif(1,0,2*pi),3)
         driftLength <- round(runif(1,0.2,thresh),2) #The bottom limit is arbitrary
         ndt <- round(runif(1,0.05,0.25),2)
-        output <- c(driftAngle,ndt,driftLength,thresh)
-        names(output) <- c("true.theta0","true.ter0","true.drift","true.bound")
+        output <- c(driftAngle,driftLength,thresh,ndt)
+        names(output) <- c("true.theta0","true.drift","true.bound","true.ter0")
   return(output)
 }
 
