@@ -16,8 +16,8 @@ plot.PosteriorDensity <- function(samples,true.value=NULL){
 }
 
 
-plot.ShowAllChains <- function(sims.array){
-    posterior.samples <- sims.array
+plot.ShowAllChains <- function(samples){
+    posterior.samples <- samples$BUGSoutput$sims.array
     labels <- names(posterior.samples[1,1,])
     for(i in 1:dim(posterior.samples)[3]){
       
