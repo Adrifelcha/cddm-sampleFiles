@@ -18,18 +18,22 @@ N <- ncol(X)
 ################################################################################
 modelFile <- "cddm.bug"
 write('
-            model{
-                  # Likelihood
-                    for (i in 1:N) {
-                         X[1:2,i] ~ dcddm(drift, bound, ter0, theta0)
-                    }
-                      
-                  # Priors
-                    drift ~ dnorm(0,1)T(0,)
-                    bound ~ dunif(0,5)
-                    ter0 ~ dexp(1)T(,0.4)
-                    theta0 ~ dunif(0,6.283185)
-                  }',
+        data {
+              tmin <- 0.95 * min(X[2,])
+        }
+  
+        model{
+              # Likelihood
+                for (i in 1:N) {
+                     X[1:2,i] ~ dcddm(drift, bound, ter0, theta0)
+                }
+                  
+              # Priors
+                drift ~ dnorm(0,1)T(0,)
+                bound ~ dunif(0,5)
+                ter0 ~ dexp(1)T(,tmin)
+                theta0 ~ dunif(0,6.283185)
+              }',
       modelFile)
 
 ################################################################################
@@ -52,8 +56,9 @@ samples <- jags(data=data, parameters.to.save=parameters, model=modelFile,
                 n.thin=n.thin, DIC=T)
 save(samples,file=fileName)
 load(fileName)
+
 ################################################################################
-# Plot chains
+# Print chains per parameter
 ################################################################################
 posterior.samples <- samples$BUGSoutput$sims.array
 
@@ -77,7 +82,7 @@ ter0 <- samples$BUGSoutput$sims.array[,,"ter0"]
 theta0 <- samples$BUGSoutput$sims.array[,,"theta0"]
 
 ################################################################################
-# Plot posterior densities
+# Plot posterior densities against true values
 ################################################################################
 plotFunction <- function(samples,true.value){
     support <- round(seq(min(samples),max(samples),length.out = 10),2)
