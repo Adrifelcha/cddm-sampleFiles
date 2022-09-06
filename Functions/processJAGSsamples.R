@@ -3,7 +3,7 @@
 #####   Functions to load and process JAGS samples  ############################
 ################################################################################
 #########################################################   by Adriana F. Chavez
-library(rstan)
+library(posterior)
 
 ################################################################################
 ##### SAMPLE EXTRACTION
@@ -195,7 +195,7 @@ myJAGSsampling.extractDeviance <- function(samples){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 myJAGSsampling.Rhat <- function(samples){
   x <- samples$BUGSoutput$sims.array
-  Rhats <- apply(x,3,Rhat)
+  Rhats <- apply(x,3,rhat)
   return(Rhats)
 }
 
