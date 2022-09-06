@@ -6,8 +6,8 @@
 #####################################################################
 
 # Load Rscripts with functions required to generate data
-source("../Functions/fun_genParameters.R")
-source("../Functions/fun_simData.R")
+source("../Functions/generateRandomParameterValues.R")
+source("../Functions/simulateDataCDDM.R")
 library(readr)
 
 ##########################################################################
@@ -55,7 +55,7 @@ simulation.ID <- round(abs(runif(1,100,999)),0)
       ndt <- par$ndt
       
       # Generate data
-      data <- cdd.simData(trials,drift.Angle,drift.Length,thresh,ndt)
+      data <- cddm.simData(trials,drift.Angle,drift.Length,thresh,ndt)
       write.csv(data,dataFile.name,row.names = FALSE)
   }else{
       data <- read.csv(dataFile.name)
@@ -65,8 +65,3 @@ simulation.ID <- round(abs(runif(1,100,999)),0)
         print("Warning: Loading an existing datafile with a different no. of trials. To overwrite this data object with the specified no. of trials, load a variable `ForceSample <- TRUE`")
       }
   }
-  
-  
-
-# Plot data
-cddm.plotData(data)
