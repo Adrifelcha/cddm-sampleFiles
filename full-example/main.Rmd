@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # 1. Generate/load simulated data
 
-\vspace{-0.2in}
+\vspace{-0.1in}
 
 ```{r, warning=FALSE, fig.width=7,fig.height=4, fig.align='center'}
 # Establish no. of trials
@@ -76,7 +76,7 @@ names(sampling.Settings) <- c("n.chains","n.iter","n.burnin","n.thin","perPartic
 
 # Run JAGS model
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 source("../Functions/runCDDMjags.R")
 
 samplesFile <- "samples.RData"
@@ -87,14 +87,69 @@ if(file.exists(samplesFile)){
    myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)}
 ```
 
+```{r, warning=FALSE,message=FALSE}
+source("../Functions/processJAGSsamples.R")
+drift  <- myJAGSsampling.extractSamples("drift",samples)
+bound  <- myJAGSsampling.extractSamples("bound",samples)
+ter0   <- myJAGSsampling.extractSamples("ter0",samples)
+theta0 <- myJAGSsampling.extractSamples("theta0",samples)
+```
+
+```{r}
+# Get descriptive statistics for posterior samples
+###########################################################
+map.theta0 <- JAGSoutput.maxDensity(theta0)
+map.drift <- JAGSoutput.maxDensity(drift)
+map.bound <- JAGSoutput.maxDensity(bound)
+map.ter0 <- JAGSoutput.maxDensity(ter0)
+MAPS <- c(map.theta0,map.drift,map.bound,map.ter0)
+names(MAPS) <- c("map.theta0","map.drift","map.bound","map.ter0")
+
+mean.theta0 <- mean(theta0)
+mean.drift <- mean(drift)
+mean.bound <- mean(bound)
+mean.ter0 <- mean(ter0)
+means <- c(mean.theta0,mean.drift,mean.bound,mean.ter0)
+names(means) <- c("mean.theta0","mean.drift","mean.bound","mean.ter0")
+```
+
 \clearpage
 
 ```{r}
 source("../Functions/plotJAGSsamples.R")
+par(mfrow = c(3,2))
 plot.ShowAllChains(samples)
 ```
 
 ```{r}
 source("../Functions/processJAGSsamples.R")
 myJAGSsampling.Rhat.max(samples)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot.PosteriorDensity(drift,par$driftLength)
+plot.PosteriorDensity(bound,par$thresh)
+plot.PosteriorDensity(ter0,par$ndt)
+plot.PosteriorDensity(theta0,par$driftAngle)
+```
+
+\clearpage
+
+# Check against EZ-estimates
+
+```{r}
+source("../Functions/ezcdm.R")
+EZ <- ezcdm.fit(data$Choice,data$RT)
+
+
+## First, compare EZ estimates against true parameter values
+EZ
+par
+
+
+# Then, compare against point descriptors for posterior samples
+##########################################################################
+MAPS
+means
 ```
