@@ -1,13 +1,14 @@
 # Load Rscripts with functions required to generate data
-
 library(R2jags)
 library(magrittr)
 
 load.module("cddm")
 load.module("vonmises")
 
-source("../Functions/fun_genParameters.R")
-source("../Functions/fun_simData.R")
+source("../Functions/generateRandomParameterValues.R")
+source("../Functions/simulateDataCDDM.R")
+
+
 
 # Lists of settings
 
@@ -32,7 +33,7 @@ true.bound        <-  bound.list       [b.Idx]
 true.nondecision  <-  nondecision.list [n.Idx]
 
 generate <- function() { 
-  cdd.simData(
+  cddm.simData(
     sampleSize,
     true.driftAngle,
     true.driftLength,
@@ -83,6 +84,7 @@ recover <- function(data) {
   
   c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
 }
+
 
 iterations <- 200
 Y <- matrix(nrow = 4, ncol = iterations)
