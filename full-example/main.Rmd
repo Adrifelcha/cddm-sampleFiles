@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 trials <- 350
 # Call Rscript to generate simulated data / load it  if already existing
 source("./getData.R")
-dim(data)
+head(data)
 # Plot data
 cddm.plotData(data)
 ```
@@ -82,8 +82,10 @@ samplesFile <- "samples.RData"
 
 if(file.exists(samplesFile)){
    load(file=samplesFile)
+   samples
 }else{
-   myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)}
+   myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
+ }
 ```
 
 ```{r, warning=FALSE,message=FALSE}
@@ -114,7 +116,7 @@ names(means) <- c("mean.theta0","mean.drift","mean.bound","mean.ter0")
 
 \clearpage
 
-```{r, fig.align='center', fig.height=7}
+```{r, fig.align='center', fig.height=7.5}
 source("../Functions/plotJAGSsamples.R")
 par(mfrow = c(3,2))
 plot.ShowAllChains(samples)
@@ -125,7 +127,9 @@ source("../Functions/processJAGSsamples.R")
 myJAGSsampling.Rhat.max(samples)
 ```
 
-```{r, fig.align='center',fig.height=6}
+\clearpage
+
+```{r, fig.align='center',fig.height=7}
 par(mfrow = c(2,2))
 plot.PosteriorDensity(drift,par["true.drift"])
 plot.PosteriorDensity(bound,par["true.bound"])
