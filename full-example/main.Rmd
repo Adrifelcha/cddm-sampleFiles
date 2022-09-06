@@ -128,10 +128,10 @@ myJAGSsampling.Rhat.max(samples)
 
 ```{r}
 par(mfrow = c(2,2))
-plot.PosteriorDensity(drift,par$driftLength)
-plot.PosteriorDensity(bound,par$thresh)
-plot.PosteriorDensity(ter0,par$ndt)
-plot.PosteriorDensity(theta0,par$driftAngle)
+plot.PosteriorDensity(drift,par["true.drift"])
+plot.PosteriorDensity(bound,par["true.bound"])
+plot.PosteriorDensity(ter0,par["true.ter0"])
+plot.PosteriorDensity(theta0,par["true.theta0"])
 ```
 
 \clearpage
