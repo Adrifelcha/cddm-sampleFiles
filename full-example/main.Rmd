@@ -44,10 +44,10 @@ write('
                     }
                       
                   # Priors
-                    drift ~ dnorm(0,1)T(0,)
-                    bound ~ dunif(0,5)
-                    ter0 ~ dexp(1)T(,0.4)
-                    theta0 ~ dunif(0,6.283185)
+                    drift  ~ dnorm(0, 1)
+                    theta0 ~ dnorm(0, 1)T(-3.14, 3.14)
+                    bound  ~ dgamma(3, 2)
+                    ter0   ~ dexp(1)T(, tmin)
                   }',
       modelFile)
 ```
@@ -64,8 +64,8 @@ where:
 
 ```{r}
 n.chains = 4
-n.iter = 1000
-n.burnin = 0
+n.iter = 2500
+n.burnin = 500
 n.thin = 1
 perParticipant = FALSE
 perTask = FALSE
@@ -74,10 +74,14 @@ sampling.Settings <- list(n.chains,n.iter,n.burnin,n.thin,perParticipant,perTask
 names <- c("n.chains","n.iter","n.burnin","n.thin","perParticipant","perTask")
 ```
 
-# Prepare data
+# Run JAGS model
 
 ```{r}
-X <- t(data)
-N <- ncol(X)
+source("../Functions/runCDDMjags.R")
+
+samplesFile <- "samples.RData"
+myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
 ```
+
+
 \clearpage
