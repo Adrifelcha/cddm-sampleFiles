@@ -55,6 +55,7 @@ samplesFile <- "samples.RData"
       samples
     }else{
       myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
+      load(file=samplesFile)
     }
 
 # Extract posterior samples and check them!
