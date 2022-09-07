@@ -148,14 +148,15 @@ plot.PosteriorDensity(theta0,par["true.theta0"])
 source("../Functions/ezcdm.R")
 EZ <- ezcdm.fit(data$Choice,data$RT)
 
-
-## First, compare EZ estimates against true parameter values
-EZ
+## True parameter values used in simulation
 par
 
+## EZ estimates
+EZ
 
-# Then, compare against point descriptors for posterior samples
-##########################################################################
+# MAPs across parameters
 MAPS
+
+# Means across parameters 
 means
 ```
