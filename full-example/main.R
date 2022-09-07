@@ -50,13 +50,12 @@ source("../Functions/processJAGSsamples.R")
 
 samplesFile <- "samples.RData"
 
-    if(file.exists(samplesFile)){
-      load(file=samplesFile)
-      samples
-    }else{
-      myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
-      load(file=samplesFile)
-    }
+
+if(!file.exists(samplesFile)){ myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data) }
+  
+load(file=samplesFile)
+  
+if(file.exists(samplesFile)){ samples }
 
 # Extract posterior samples and check them!
 #########################################################
