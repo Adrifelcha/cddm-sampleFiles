@@ -3,10 +3,9 @@
 ################################################################################
 # Establish no. of trials
 trials <- 350
-
 # Call Rscript to generate simulated data / load it  if already existing
 source("./getData.R")
-dim(data)
+head(data)
 # Plot data
 cddm.plotData(data)
 # Print parameter values used to generate this data
@@ -53,6 +52,7 @@ samplesFile <- "samples.RData"
 
     if(file.exists(samplesFile)){
       load(file=samplesFile)
+      samples
     }else{
       myJAGSsampling.CDDM(sampling.Settings,modelFile,samplesFile,data)
     }
