@@ -1,22 +1,30 @@
 ################################################################################
-# Load packages
+##  The toyExample.R file runs the simple-example 
+##  The simple-example is meant to be self-contained:
+##      1. Calls the Rscript toyData.R to load/generate the dataset
+##      2. Writes a simple JAGS model to implement the CDDM
+##      3. Runs the model on the data
+##      4. Plots the posterior chains
+##  None of the function files contained in the Functions/ folder is used in this
+##      first, simple-example.
+################################################################################
+
+# Step 0. Load packages
 ################################################################################
 library(R2jags)  
 load.module("cddm")
 
+# Step 1. Load and prepare data
 ################################################################################
-# Load data
-################################################################################
-source("./toyData.R")
-datos <- t(datos)
+source("./toyData.R")    # Run Rscript that loads/generates data file as needed
+datos <- t(datos)        # Data file needs to be transposed (2-by-trials)
 
 X <- datos
 N <- ncol(X)
 
+# Step 2. Write simple JAGS model
 ################################################################################
-# Write simple JAGS model
-################################################################################
-modelFile <- "cddm.bug"
+modelFile <- "cddm_JAGSmodel.bug"
 write('
         data {
               tmin <- 0.95 * min(X[2,])
@@ -36,8 +44,7 @@ write('
               }',
       modelFile)
 
-################################################################################
-# Settings to be passed to JAGS
+# Steo 3. Define settings to be passed to JAGS
 ################################################################################
 n.chains = 1
 n.iter = 1000 
@@ -47,8 +54,7 @@ n.thin = 1
 data <- list("X","N")
 parameters <- c("drift", "bound", "ter0", "theta0")
 
-################################################################################
-# Run JAGS
+# Step 4. Run JAGS and save samples
 ################################################################################
 fileName <- "toyExample_samples.RData"
 samples <- jags(data=data, parameters.to.save=parameters, model=modelFile, 
@@ -57,8 +63,7 @@ samples <- jags(data=data, parameters.to.save=parameters, model=modelFile,
 save(samples,file=fileName)
 load(fileName)
 
-################################################################################
-# Print chains per parameter
+# Step 5. Show chains obtained per parameter
 ################################################################################
 posterior.samples <- samples$BUGSoutput$sims.array
 
@@ -73,16 +78,14 @@ for(i in 1:dim(posterior.samples)[3]){
       }
 }
 
-################################################################################
-# Get parameter values
+# Step 6. Extract chains specific to every parameter in the CDDM
 ################################################################################
 drift <- samples$BUGSoutput$sims.array[,,"drift"]
 bound <- samples$BUGSoutput$sims.array[,,"bound"]
 ter0 <- samples$BUGSoutput$sims.array[,,"ter0"]
 theta0 <- samples$BUGSoutput$sims.array[,,"theta0"]
 
-################################################################################
-# Plot posterior densities against true values
+# Step 7. Plot posterior densities against true values
 ################################################################################
 plotFunction <- function(samples,true.value){
     support <- round(seq(min(samples),max(samples),length.out = 10),2)
