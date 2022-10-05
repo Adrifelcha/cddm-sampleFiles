@@ -1,1 +1,0 @@
-Ignore this text file, I am just trying to explore the functionality of git within the Vagrant machine
