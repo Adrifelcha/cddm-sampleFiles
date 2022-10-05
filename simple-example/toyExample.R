@@ -38,9 +38,9 @@ write('
                   
               # Priors
                 drift ~ dnorm(0,1)T(0,)
-                bound ~ dunif(0,5)
+                bound ~ dgamma(3,2)
                 ter0 ~ dexp(1)T(,tmin)
-                theta0 ~ dunif(0,6.283185)
+                theta0 ~ dnorm(0,0.1)T(-3.14,3.14)
               }',
       modelFile)
 
