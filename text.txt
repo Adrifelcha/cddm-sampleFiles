@@ -1,0 +1,2 @@
+Ignore this file, I'm just checking the functionality of the git configuration on Vagrant machine
+
