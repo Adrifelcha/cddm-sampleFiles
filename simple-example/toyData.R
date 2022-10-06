@@ -10,7 +10,7 @@ source("../Functions/generateRandomParameterValues.R")
 source("../Functions/simulateDataCDDM.R")
 
 # Step 0. Load the fixed parameter values used in the simulation
-trials = 100
+trials = 200
 true.bound = 2.45
 mu1 <- 1.5
 mu2 <- 1.25
