@@ -96,7 +96,10 @@ plotFunction <- function(samples,true.value){
     support <- round(seq(min(samples),max(samples),length.out = 10),2)
     plot(density(c(samples)), main="",axes=F,ann=F)
     abline(v=true.value, col="indianred4",lwd=2)
-    legend("topright","true value",lwd=2,col="indianred4",cex=0.8,bty="n")
+    abline(v=mean(samples), col="blue",lwd=1,lty=2)
+    legend("topright",c(paste("true value (", round(true.value,2), ")", sep=""),
+                        paste("mean posterior(", round(mean(samples),2), ")", sep="")),
+           lwd=c(2,1),col=c("indianred4","blue"),cex=0.8,bty="n", lty=c(1,2))
     mtext("Posterior values",1,line=2,f=2)
     mtext("Density",2,line=0,f=2)
     axis(1,support,support)
