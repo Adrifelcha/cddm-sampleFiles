@@ -54,10 +54,14 @@ n.thin = 1
 data <- list("X","N")
 parameters <- c("drift", "bound", "ter0", "theta0")
 
-myinits <- list(drift = 2,
-                theta0 = 1,
-                ter0 = 0.1,
-                bound = 2)
+
+myinits <- rep(list(list()), n.chains)
+for(i in 1:n.chains){
+    myinits[[i]] <- list(drift = 2,
+                    theta0 = 1,
+		    ter0 = 0.1,
+                    bound = 2)
+   }
 
 # Step 4. Run JAGS and save samples
 ################################################################################
