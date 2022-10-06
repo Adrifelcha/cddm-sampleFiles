@@ -47,7 +47,7 @@ write('
 # Steo 3. Define settings to be passed to JAGS
 ################################################################################
 n.chains = 1
-n.iter = 5000 
+n.iter = 10000 
 n.burnin = 1000
 n.thin = 1
 
