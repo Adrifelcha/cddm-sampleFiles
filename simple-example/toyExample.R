@@ -47,8 +47,8 @@ write('
 # Steo 3. Define settings to be passed to JAGS
 ################################################################################
 n.chains = 1
-n.iter = 5500 
-n.burnin = 500
+n.iter = 5000 
+n.burnin = 1000
 n.thin = 1
 
 data <- list("X","N")
