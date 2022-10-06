@@ -85,6 +85,11 @@ bound <- samples$BUGSoutput$sims.array[,,"bound"]
 ter0 <- samples$BUGSoutput$sims.array[,,"ter0"]
 theta0 <- samples$BUGSoutput$sims.array[,,"theta0"]
 
+# Since we used an unconstrained prior for theta0, we use modular arithmetic to
+#       convert whatever values were sampled for theta0, into a 0-2pi scale.
+theta0 <- theta0 %% (2*pi)
+
+
 # Step 7. Plot posterior densities against true values
 ################################################################################
 plotFunction <- function(samples,true.value){
