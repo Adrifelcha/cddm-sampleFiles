@@ -10,8 +10,8 @@ source("../Functions/generateRandomParameterValues.R")
 source("../Functions/simulateDataCDDM.R")
 
 # Step 0. Load the fixed parameter values used in the simulation
-trials = 500
-true.bound = 2.5
+trials = 100
+true.bound = 2.45
 mu1 <- 1.5
 mu2 <- 1.25
 true.ndt <- 0.1
@@ -26,7 +26,11 @@ file.not.found <- !file.exists(searchFile)
       # If file does not exist, we simulate data and save it into a brand new toyData.csv file
       if(file.not.found){
 		# Run simulation
-		      simulateData <- cddm.simData(trials,true.drift.Angle,true.drift.Length,true.bound,true.ndt)
+		      simulateData <- cddm.simData(trials = trials, 
+						   drift.Angle = true.drift.Angle,
+						   drift.Length = true.drift.Length,
+						   thresh = true.bound,
+						   ndt = true.ndt)
 		# Store data into a toyData.csv file
 		       write.csv(simulateData,"./toyData.csv",row.names = FALSE)
       }
