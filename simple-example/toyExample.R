@@ -47,8 +47,8 @@ write('
 # Steo 3. Define settings to be passed to JAGS
 ################################################################################
 n.chains = 1
-n.iter = 5000 
-n.burnin = 1000
+n.iter = 5500 
+n.burnin = 5000
 n.thin = 1
 
 data <- list("X","N")
@@ -130,9 +130,12 @@ plotBoxplot <- function(samples,true.value){
 
 plotDensity(drift,true.drift.Length)
 plotBoxplot(drift,true.drift.Length)
+
 plotDensity(bound,true.bound)
 plotBoxplot(bound,true.bound)
+
 plotDensity(ter0,true.ndt)
 plotBoxplot(ter0,true.ndt)
+
 plotDensity(theta0,true.drift.Angle)
 plotBoxplot(theta0,true.drift.Angle)
