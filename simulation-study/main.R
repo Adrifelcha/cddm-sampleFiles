@@ -25,13 +25,17 @@ nondecision.list  <-  c(0.1, 0.2, 0.3)
 # Identify maximum valid index for every list
 s.topIdx  <-  length(sampleSize.list)
 a.topIdx  <-  length(driftAngle.list)
-l.topIdx  <-  length(driftLength.list)
+m.topIdx  <-  length(driftLength.list)   # 'm' for magnitude
 b.topIdx  <-  length(bound.list)
 n.topIdx  <-  length(nondecision.list)
+
+# Count the number of possible combinations (Fundamental Counting Principle)
+possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
 
 ################################################################
 # Define functions for Generating data and Recovering parameters
 ################################################################
+
 generate <- function() { 
   X <-  cddm.simData(
 			sampleSize,
@@ -43,7 +47,8 @@ generate <- function() {
   return(output)
 }
 
-recover <- function(data) { 
+recover <- function(data) {
+  # Write JAGS model 
   modelFile <- "cddm_JAGSmodel.bug"
   write('
       data {
@@ -64,7 +69,7 @@ recover <- function(data) {
               ter0   ~ dexp(1)T(, tmin)
             }',
         modelFile)
-  
+  # General sampling settings
   n.chains =   4
   n.iter   = 1400 
   n.burnin = 400
@@ -72,11 +77,13 @@ recover <- function(data) {
   
   data <- list(X=data)
   parameters <- c("drift", "bound", "ter0", "theta0")
-  
+
+  # Run model
   samples <- jags(data=data, parameters.to.save=parameters, model=modelFile, 
                   n.chains=n.chains, n.iter=n.iter, n.burnin=n.burnin, 
                   n.thin=n.thin, DIC=T)
   
+  # Compute mean posterior  
   est.driftLength  <- mean( samples$BUGSoutput$sims.array[,,"drift"]  )
   est.bound        <- mean( samples$BUGSoutput$sims.array[,,"bound"]  )
   est.nondecision  <- mean( samples$BUGSoutput$sims.array[,,"ter0"]   )
@@ -86,7 +93,7 @@ recover <- function(data) {
 return(output)
 }
 
-### TESTING generate() and recover() functions over first set of true values.
+### TESTING the generate() and recover() functions over first set of true values.
 #############################################################################
 sampleSize        <-  sampleSize.list  [1]
 true.driftAngle   <-  driftAngle.list  [1]
@@ -107,15 +114,48 @@ colnames(X) <- c("length","bound","ndt","angle")
 rownames(X) <- c("true","retrieved")
 X
 
+###################################################################################
+# A function to run the simulation study
+###################################################################################
 
 run_sim_study <-function(){
 
-for(n in 1:s.topIdx){
-    for(){
+   trueValues <- array(NA, dim=c(1,5,possible.combinations))
+   retrievedValues <- array(NA,dim=c(iterations,5,possible.combinations))
 
-}
-}
+   par.labels <- c("driftLength","bound","ndt","driftAngle")
+   colnames(trueValues) <- c("trials",par.labels)
+   colnames(retrievedValues) <- par.labels
 
+   page <- 1
+   for(n in 1:n.topIdx){
+       for(a in 1:a.topIdx){
+           for(b in 1:b.topIdx){
+	       for(m 1:m.topIdx){
+                   for(s in 1:s.topIdx){
+                       sampleSize       <-   sampleSize.list  [s]
+	               true.driftAngle  <-   driftAngle.list  [a] 
+		       true.driftLength <-   driftLength.list [m]
+		       true.bound       <-   bound.list       [b]
+		       true.nondecision <-   nondecision.list [n]
+                       
+                       truth <- c(sampleSize,true.driftLength,true.bound,true.nondecision,true.driftAngle)
+                       trueValues[1,truth,page]
 
+		       for(i in 1:iterations){
+			   X <- generate()
+			   retrievedValues[i,,page] <- recover(X) 
+		       }
+
+		       page <- page+1
+                    
+                   }
+	       }
+	   }
+       }
+   }
+
+  save(trueValues,file="trueValues.RData")
+  save(retrievedValues, file="retrievedValues.RData)
 }
 
