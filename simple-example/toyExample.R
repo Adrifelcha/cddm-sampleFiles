@@ -101,7 +101,7 @@ theta0 <- theta0 %% (2*pi)
 
 # Step 7. Plot posterior densities against true values
 ################################################################################
-plotFunction <- function(samples,true.value){
+plotDensity <- function(samples,true.value){
     support <- round(seq(min(samples),max(samples),length.out = 10),2)
     plot(density(c(samples)), main="",axes=F,ann=F)
     abline(v=true.value, col="indianred4",lwd=2)
@@ -115,7 +115,24 @@ plotFunction <- function(samples,true.value){
     mtext(paste("Posterior density - ",substitute(samples),sep=""),3, line=0.5,f=2)
 }
 
-plotFunction(drift,true.drift.Length)
-plotFunction(bound,true.bound)
-plotFunction(ter0,true.ndt)
-plotFunction(theta0,true.drift.Angle)
+plotBoxplot <- function(samples,true.value){
+  plotting.values <- round(seq(min(samples),max(samples),length.out=10),2)
+  boxplot(c(samples), main="",axes=F,ann=F, pch=16, cex=0.7)
+  abline(h=true.value, col="indianred4",lwd=2)
+  abline(h=mean(samples), col="blue",lwd=1,lty=2)
+  legend("bottomleft",c(paste("true value (", round(true.value,2), ")", sep=""),
+                      paste("mean posterior(", round(mean(samples),2), ")", sep="")),
+         lwd=c(2,1),col=c("indianred4","blue"),cex=0.8,bty="n", lty=c(1,2))
+  mtext("Posterior values",2,line=3,f=2)
+  axis(2,plotting.values,plotting.values,las=2)
+  mtext(paste("Posterior samples - ",substitute(samples),sep=""),3, line=0.5,f=2)
+}
+
+plotDensity(drift,true.drift.Length)
+plotBoxplot(drift,true.drift.Length)
+plotDensity(bound,true.bound)
+plotBoxplot(bound,true.bound)
+plotDensity(ter0,true.ndt)
+plotBoxplot(ter0,true.ndt)
+plotDensity(theta0,true.drift.Angle)
+plotBoxplot(theta0,true.drift.Angle)
