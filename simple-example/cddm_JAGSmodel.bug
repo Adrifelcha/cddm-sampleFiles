@@ -10,8 +10,8 @@
                 }
                   
               # Priors
-                drift ~ dnorm(0,0.1)T(0,)
-                bound ~ dgamma(3,1)
+                drift ~ dnorm(0,1)T(0,)
+                bound ~ dgamma(3,2)
                 ter0 ~ dexp(1)T(,tmin)
                 theta0 ~ dnorm(0,0.1)
               }
