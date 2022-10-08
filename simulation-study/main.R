@@ -101,12 +101,14 @@ true.driftLength  <-  driftLength.list [1]
 true.bound        <-  bound.list       [1]
 true.nondecision  <-  nondecision.list [1]
 
-iterations = 50
+iterations = 200
 Y <- matrix(nrow = 4, ncol = iterations)
 for (k in 1:iterations) { 
   X <- generate()
   Y[,k] <- recover(X)
 }
+
+save(Y,file="test_IndividualEstimates.RData")
 
 superMean <- apply(Y,1,mean)
 trueVals <- c(true.driftLength, true.bound, true.nondecision, true.driftAngle)
@@ -115,10 +117,11 @@ colnames(X) <- c("length","bound","ndt","angle")
 rownames(X) <- c("true","retrieved")
 X
 
+
+
 ###################################################################################
 # A function to run the simulation study
 ###################################################################################
-
 run_sim_study <-function(){
 
    trueValues <- array(NA, dim=c(1,5,possible.combinations))
@@ -158,4 +161,11 @@ run_sim_study <-function(){
   save(trueValues,file="trueValues.RData")
   save(retrievedValues, file="retrievedValues.RData")
 }
+
+makeBoxplots <- function(trueValuesArray,retrievedValuesArray){
+  for(par in 2:ncol(trueValuesArray)){
+    
+  }  
+}
+
 
