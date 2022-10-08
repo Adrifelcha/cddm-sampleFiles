@@ -101,7 +101,6 @@ true.driftLength  <-  driftLength.list [1]
 true.bound        <-  bound.list       [1]
 true.nondecision  <-  nondecision.list [1]
 
-iterations = 200
 Y <- matrix(nrow = 4, ncol = iterations)
 for (k in 1:iterations) { 
   X <- generate()
@@ -162,6 +161,8 @@ run_sim_study <-function(){
   save(retrievedValues, file="retrievedValues.RData")
 }
 
+
+
 makeBoxplots <- function(trueValuesArray,retrievedValuesArray){
   for(par in 2:ncol(trueValuesArray)){
     
@@ -169,3 +170,8 @@ makeBoxplots <- function(trueValuesArray,retrievedValuesArray){
 }
 
 
+##############################################################
+# RUN SIMULATION STUDY
+##############################################################
+
+run_sim_study()
