@@ -8,7 +8,7 @@ source("../Functions/simulateDataCDDM.R")
 
 # Load JAGS modules
 load.module("cddm")
-load.module("vonmises")
+#load.module("vonmises")
 
 ##########################################################
 # Lists of settings
@@ -63,16 +63,16 @@ recover <- function(data) {
               }
                 
             # Priors
-              drift  ~ dnorm(0, 0.1)T(0,)
+              drift  ~ dnorm(0, 1)T(0,)
               theta0 ~ dnorm(0, 0.1)
-              bound  ~ dgamma(2, 2)
+              bound  ~ dgamma(3, 2)
               ter0   ~ dexp(1)T(, tmin)
             }',
         modelFile)
   # General sampling settings
   n.chains =   4
-  n.iter   = 1400 
-  n.burnin = 400
+  n.iter   = 2500 
+  n.burnin = 500
   n.thin   =   1
   
   data <- list(X=data)
@@ -87,7 +87,7 @@ recover <- function(data) {
   est.driftLength  <- mean( samples$BUGSoutput$sims.array[,,"drift"]  )
   est.bound        <- mean( samples$BUGSoutput$sims.array[,,"bound"]  )
   est.nondecision  <- mean( samples$BUGSoutput$sims.array[,,"ter0"]   )
-  est.driftAngle   <- mean( samples$BUGSoutput$sims.array[,,"theta0"] %% (2*pi) )
+  est.driftAngle   <- mean( samples$BUGSoutput$sims.array[,,"theta0"] )
   
   output <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
 return(output)
@@ -101,13 +101,14 @@ true.driftLength  <-  driftLength.list [1]
 true.bound        <-  bound.list       [1]
 true.nondecision  <-  nondecision.list [1]
 
+iterations = 50
 Y <- matrix(nrow = 4, ncol = iterations)
 for (k in 1:iterations) { 
   X <- generate()
   Y[,k] <- recover(X)
 }
 
-superMean <- rowMeans(Y)
+superMean <- apply(Y,1,mean)
 trueVals <- c(true.driftLength, true.bound, true.nondecision, true.driftAngle)
 X <- rbind(trueVals,superMean)
 colnames(X) <- c("length","bound","ndt","angle")
@@ -131,31 +132,30 @@ run_sim_study <-function(){
    for(n in 1:n.topIdx){
        for(a in 1:a.topIdx){
            for(b in 1:b.topIdx){
-	       for(m 1:m.topIdx){
+	             for(m in 1:m.topIdx){
                    for(s in 1:s.topIdx){
                        sampleSize       <-   sampleSize.list  [s]
-	               true.driftAngle  <-   driftAngle.list  [a] 
-		       true.driftLength <-   driftLength.list [m]
-		       true.bound       <-   bound.list       [b]
-		       true.nondecision <-   nondecision.list [n]
+	                     true.driftAngle  <-   driftAngle.list  [a] 
+		                   true.driftLength <-   driftLength.list [m]
+		                   true.bound       <-   bound.list       [b]
+		                   true.nondecision <-   nondecision.list [n]
                        
                        truth <- c(sampleSize,true.driftLength,true.bound,true.nondecision,true.driftAngle)
                        trueValues[1,truth,page]
-
-		       for(i in 1:iterations){
-			   X <- generate()
-			   retrievedValues[i,,page] <- recover(X) 
-		       }
-
-		       page <- page+1
-                    
-                   }
-	       }
-	   }
-       }
-   }
+		                    
+                       for(i in 1:iterations){
+			                     X <- generate()
+			                     retrievedValues[i,,page] <- recover(X) 
+                       }
+                       
+		                  page <- page+1
+		                  }
+	                }
+	            }
+          }
+      }
 
   save(trueValues,file="trueValues.RData")
-  save(retrievedValues, file="retrievedValues.RData)
+  save(retrievedValues, file="retrievedValues.RData")
 }
 
