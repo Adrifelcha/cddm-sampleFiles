@@ -23,41 +23,81 @@
 cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.00015){
   sqDT <- sqrt(dt)
   s.init <- c(0,0) 
-  iter <- 15/dt  # Maximum number of iterations on the random walk process
-  state <- array(NA, dim = c(iter, 2, trials))   #States are saved in a 3dimensional array
-  finalT <- NA #An additional empty vector to store RT (a.k.a. total number of iterations)
+  iter <- round(15/dt)  # Maximum number of iterations on the random walk 
+  state <- array(NA, dim = c(iter, 2, trials))   # States are saved in a 3dimensional array
+  finalT <- rep(NA,trials) # Empty vector to store RT (a.k.a. total number of iterations)
+  additional_steps_needed <- rep(0,trials)
   
-  random_stepsizes <- rnorm(trials*iter*2,0,1)*(drift.Coeff*sqDT)
-  motion <- array(random_stepsizes,dim = c(iter,2,trials))
+  # Arrays to be used in simulation
+  random_deviations <- rnorm(trials*iter*2,0,1)*(drift.Coeff*sqDT)   # Deviations from step sizes mu1, mu2 (Noise)
+  motion <- array(random_deviations,dim = c(iter,2,trials))          # Store deviations in array
+  steps_d1 <- motion[,1,]+(mu1*dt)
+  steps_d2 <- motion[,2,]+(mu2*dt)
   
-  for(a in 1:trials){  
-    state[1,,a] <- s.init   # States are stored in 3D array
-    
-    for(t in 2:iter){
-      d1 <- motion[t,1,a]+(mu1*dt)
-      d2 <- motion[t,2,a]+(mu2*dt)
-      state[t,,a] <- state[t-1,,a]+c(d1,d2)
-      pass <- sqrt(sum(state[t,,a]^2))
-      
-      if(pass >= thresh){
-        finalT[a] <- t+(ndt/dt)   #Total no. of iterations required on each trial
-        break
+  # Set initial state for every trial
+  state[1,,] <- s.init # Set initial point for every random-walk on each trial
+  
+  for(a in 1:trials){   
+      ### Random walk per trial
+      for(t in 2:iter){
+          d1 <- steps_d1[t,a]
+          d2 <- steps_d2[t,a]
+          state[t,,a] <- state[t-1,,a]+c(d1,d2)
+          pass <- sqrt(sum(state[t,,a]^2))
+          
+          # Stop random-walk if threshold is passed
+          if(pass >= thresh){
+            finalT[a] <- t+(ndt/dt)   #Total no. of iterations required on each trial
+            break
+          }
       }
-    }
     
-    if(pass > thresh){
-      get.Angle <- cddm.coordToDegrees(c(state[t,1,a],state[t,2,a]))
-      get.Radians <- cddm.degToRad(get.Angle)
-      final.coord <- cddm.polarToRect(get.Radians,thresh)
-      final.x <- final.coord$mu1
-      final.y <- final.coord$mu2
-      state[t,,a] <- c(final.x,final.y)
-    }
+      # Test whether the random-walk reached the boundary, and re-sample if not.
+      not.finished <- is.na(finalT[a])
+      if(not.finished){ additional_steps_needed[a] <- 1 }
+      
+      whileLoopNo <- 1
+      while(not.finished){
+            last_state <- state[t,,a]   # Store last state
+            state[,,a] <- NA            # Reset random-walk
+            state[1,,a] <- last_state   # Start at last state
+        
+            # Get a new list of random step sizes
+            more_random_deviations <- rnorm(iter*2,0,1)*(drift.Coeff*sqDT)
+            more_motion <- array(more_random_deviations,dim = c(iter,2))
+            more_steps_d1 <- more_motion[,1]+(mu1*dt)
+            more_steps_d2 <- more_motion[,2]+(mu2*dt)
+        
+            for(t in 2:iter){
+                d1 <- more_steps_d1[t]
+                d2 <- more_steps_d2[t]
+                state[t,,a] <- state[t-1,,a]+c(d1,d2)
+                pass <- sqrt(sum(state[t,,a]^2))
+                
+                if(pass >= thresh){
+                  added_iterations <- iter*whileLoopNo
+                  finalT[a] <- (t+added_iterations)+(ndt/dt)   #Total no. of iterations required on each trial
+                  break
+                }
+            }
+            
+            not.finished <- is.na(finalT[a])  # Re-evaluate
+            whileLoopNo <- whileLoopNo + 1    # Register while loop iteration
+      }
+    
+      if(pass > thresh){
+          get.Angle <- cddm.coordToDegrees(c(state[t,1,a],state[t,2,a]))
+          get.Radians <- cddm.degToRad(get.Angle)
+          final.coord <- cddm.polarToRect(get.Radians,thresh)
+          final.x <- final.coord$mu1
+          final.y <- final.coord$mu2
+          state[t,,a] <- c(final.x,final.y)
+      }
   }
   
   finalT <- finalT*dt
-  output <- list(state,finalT)
-  names(output) <- c("state","RT")
+  output <- list(state,finalT,additional_steps_needed)
+  names(output) <- c("state","RT","repeated.Walk")
   return(output)
 }
 
@@ -119,6 +159,7 @@ cddm.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, dri
   randomWalk <-  cddm.randomWalk(trials=trials,mu1=mu1,mu2=mu2,thresh=thresh,
                                  ndt=ndt,drift.Coeff=drift.Coeff,dt=dt)
   RT <- randomWalk$RT
+  add.Iterations <- randomWalk$repeated.Walk
   randomWalk <- randomWalk$state
   coord <- cddm.getFinalState(randomWalk)
   degrees <- cddm.coordToDegrees(coord)
@@ -128,7 +169,10 @@ cddm.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, dri
   data <- as.data.frame(cbind(radians,RT))
   colnames(data) <- c("Choice","RT")
   
-  return(data)
+  output <- list(data,add.Iterations)
+  names(output) <- c("data","repeated.Walk")
+  
+  return(output)
 }
 
 ############################################################################
@@ -182,9 +226,9 @@ cddm.plotRW <- function(randomWalk){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Plot  observed choices and RT
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.plotData <- function(simData){
-  choice <- simData$Choice
-  RT <- simData$RT
+cddm.plotData <- function(randomWalk.bivariateData){
+  choice <- randomWalk.bivariateData$Choice
+  RT <- randomWalk.bivariateData$RT
   trials <- length(RT)
   
   direction <- cddm.radToDeg(choice) # Transform radian choices into degrees
