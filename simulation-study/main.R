@@ -13,7 +13,7 @@ load.module("cddm")
 #load.module("vonmises")
 
 ##########################################################
-# Lists of settings
+# Simulation settings
 ##########################################################
 iterations <- 200
 
@@ -31,13 +31,12 @@ m.topIdx  <-  length(driftLength.list)   # 'm' for magnitude
 b.topIdx  <-  length(bound.list)
 n.topIdx  <-  length(nondecision.list)
 
-# Count the number of possible combinations (Fundamental Counting Principle)
+# Count the number of possible combinations
 possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
 
 ################################################################
 # Define functions for Generating data and Recovering parameters
 ################################################################
-
 generate <- function(seed) {
   set.seed(seed)
   
@@ -116,6 +115,7 @@ recover <- function(data) {
   est.driftAngle   <- mean( samples$BUGSoutput$sims.array[,,"theta0"] )
   mean.est <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
   
+  
   # Compute standard deviation
   sd.driftLength  <- sd( samples$BUGSoutput$sims.array[,,"drift"]  )
   sd.bound        <- sd( samples$BUGSoutput$sims.array[,,"bound"]  )
@@ -123,15 +123,21 @@ recover <- function(data) {
   sd.driftAngle   <- sd( samples$BUGSoutput$sims.array[,,"theta0"] )
   sd.est <- c(sd.driftLength, sd.bound, sd.nondecision, sd.driftAngle)
   
+  # Keep whole theta0 chains
+  theta0.samples <- samples$BUGSoutput$sims.array[,,"theta0"]
+  
+  # Compute Rhats
   object <- samples$BUGSoutput$sims.array
   Rhats <- apply(object,3,Rhat)
   
-  output <- list(mean.est, 
+  output <- list(theta0.samples,
+                 mean.est, 
                  sd.est, 
                  Rhats,
                  clock)
   
-  names(output) <- c("mean.estimates", 
+  names(output) <- c("theta0.samples",
+                     "mean.estimates", 
                      "std.estimates", 
                      "Rhats",
                      "time.elapsed")
@@ -146,6 +152,8 @@ run_sim_study <-function(){
   
   trueValues <- array(NA, dim=c(possible.combinations,5))
   colnames(trueValues) <- c("trials",par.labels)
+  
+  theta0.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
   
   retrievedValues <- array(NA,dim=c(iterations,4,possible.combinations))
   colnames(retrievedValues) <- par.labels
@@ -178,20 +186,30 @@ run_sim_study <-function(){
 			                    retrievedValues_sd[i,,page] <- Y$std.estimates
 			                    timers[i,page] <- Y$time.elapsed
 			                    rhats[i,,page] <- Y$Rhats
+			                    theta0.samples[,,i,page] <- Y$theta0.samples
                       }
                       
                       this.matrix.means <- retrievedValues[,,page]
                       this.matrix.sd <- retrievedValues_sd[,,page]
                       this.matrix.rhats <- rhats[,,page]
                       this.timer <- timers[,page]
+                      these.thetas <- theta0.samples[,,,page]
                       
                       Z <- list(this.truth,
                                 this.matrix.means,
                                 this.matrix.sd,
                                 this.matrix.rhats,
-                                this.timer)
+                                this.timer,
+                                these.thetas)
+                      
+                      names(Z) <- c("current.truth",
+                                    "current.matrix.means",
+                                    "current.matrix.sd",
+                                    "current.matrix.rhats",
+                                    "current.timer",
+                                    "current.thetas")
                        
-                      fileName <- paste("./output2/subset",page,"_",
+                      fileName <- paste("./output_new/subset",page,"_",
                                          "n",n,"-",
                                          "a",a,"-",
                                          "b",b,"-",
@@ -219,8 +237,4 @@ run_sim_study <-function(){
 ##############################################################
 # RUN SIMULATION STUDY
 ##############################################################
-ForceRun <- FALSE
-
-results.File
-
 run_sim_study()
