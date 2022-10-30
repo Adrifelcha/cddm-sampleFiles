@@ -10,7 +10,6 @@ source("../Functions/simulateDataCDDM.R")
 
 # Load JAGS modules
 load.module("cddm")
-#load.module("vonmises")
 
 ##########################################################
 # Lists of settings
@@ -214,13 +213,3 @@ run_sim_study <-function(){
   save(retrievedValues_sd, file="./output2/simStudy_std.RData")
   save(timers, file="./output2/simStudy_timers.RData")
 }
-
-
-##############################################################
-# RUN SIMULATION STUDY
-##############################################################
-ForceRun <- FALSE
-
-results.File
-
-run_sim_study()
