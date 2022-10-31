@@ -258,4 +258,5 @@ run_sim_study <-function(run.id=NA){
   save(retrievedValues_sd, file = paste(output.folder,"simStudy_std.RData",sep=""))
   save(mapValues, file = paste(output.folder,"simStudy_MAPs.RData",sep=""))
   save(timers, file = paste(output.folder,"simStudy_timers.RData",sep=""))
+  save(theta0.samples, file = paste(output.folder,"simStudy_theta0.RData",sep=""))
 }
