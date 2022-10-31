@@ -9,7 +9,7 @@
 # mu1 and mu2 - Individual drift rates for the motion on the x and y axes
 # drift.Angle - Direction of the drift vector
 # drift.Length - Magnitude of the drift vector
-# thresh - Boundary (radius)
+# boundary - Boundary (radius)
 # ndt - Non decision time
 # drift.Coeff - Within-trial variability on the sampling process
 # dt - Step size ("delta-t")
@@ -20,7 +20,7 @@
 # Simulate the full random walk across many trials (for each trial, 
 # keeps the full chain of coordinates visited and response times)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt=0.00015){
+cddm.randomWalk <- function(trials, mu1, mu2, boundary, ndt=0.1, drift.Coeff=1, dt=0.00015){
   sqDT <- sqrt(dt)
   s.init <- c(0,0) 
   iter <- round(15/dt)  # Maximum number of iterations on the random walk 
@@ -45,8 +45,8 @@ cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt
           state[t,,a] <- state[t-1,,a]+c(d1,d2)
           pass <- sqrt(sum(state[t,,a]^2))
           
-          # Stop random-walk if threshold is passed
-          if(pass >= thresh){
+          # Stop random-walk if boundary is passed
+          if(pass >= boundary){
             finalT[a] <- t+(ndt/dt)   #Total no. of iterations required on each trial
             break
           }
@@ -74,7 +74,7 @@ cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt
                 state[t,,a] <- state[t-1,,a]+c(d1,d2)
                 pass <- sqrt(sum(state[t,,a]^2))
                 
-                if(pass >= thresh){
+                if(pass >= boundary){
                   added_iterations <- iter*whileLoopNo
                   finalT[a] <- (t+added_iterations)+(ndt/dt)   #Total no. of iterations required on each trial
                   break
@@ -85,10 +85,10 @@ cddm.randomWalk <- function(trials, mu1, mu2, thresh, ndt=0.1, drift.Coeff=1, dt
             whileLoopNo <- whileLoopNo + 1    # Register while loop iteration
       }
     
-      if(pass > thresh){
+      if(pass > boundary){
           get.Angle <- cddm.coordToDegrees(c(state[t,1,a],state[t,2,a]))
           get.Radians <- cddm.degToRad(get.Angle)
-          final.coord <- cddm.polarToRect(get.Radians,thresh)
+          final.coord <- cddm.polarToRect(get.Radians,boundary)
           final.x <- final.coord$mu1
           final.y <- final.coord$mu2
           state[t,,a] <- c(final.x,final.y)
@@ -150,13 +150,13 @@ cddm.coordToDegrees <-  function(coord){
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.simData <- function(trials, drift.Angle, drift.Length, thresh, ndt=0.1, drift.Coeff=1, dt=0.0015){
+cddm.simData <- function(trials, drift.Angle, drift.Length, boundary, ndt=0.1, drift.Coeff=1, dt=0.0015){
   
   Mu <- cddm.polarToRect(drift.Angle,drift.Length)
   mu1 <- Mu$mu1
   mu2 <-Mu$mu2
   
-  randomWalk <-  cddm.randomWalk(trials=trials,mu1=mu1,mu2=mu2,thresh=thresh,
+  randomWalk <-  cddm.randomWalk(trials=trials,mu1=mu1,mu2=mu2,boundary=boundary,
                                  ndt=ndt,drift.Coeff=drift.Coeff,dt=dt)
   RT <- randomWalk$RT
   add.Iterations <- randomWalk$repeated.Walk
@@ -189,13 +189,13 @@ cddm.plotRW <- function(randomWalk){
   finalT <- randomWalk$RT
   trials <- length(finalT)
   choices <- cddm.getFinalState(state)
-  thresh <- cddm.getVectorLength(choices[1,1],choices[1,2])
-  thresh <- round(thresh,2)
+  boundary <- cddm.getVectorLength(choices[1,1],choices[1,2])
+  boundary <- round(boundary,2)
   
-  circle <- cddm.polarToRect(all.Angles,thresh)
+  circle <- cddm.polarToRect(all.Angles,boundary)
   
   par(mfrow = c(1,2))  # Open space for 2 plots
-  pm <- thresh+0.5 #Plot margin
+  pm <- boundary+0.5 #Plot margin
   plot(-10:10,-10:10,type="n", ann = FALSE, axes = FALSE,
        xlim=c(-pm,pm),ylim=c(-pm,pm))
   for(b in 1:trials){
@@ -232,9 +232,9 @@ cddm.plotData <- function(randomWalk.bivariateData){
   trials <- length(RT)
   
   direction <- cddm.radToDeg(choice) # Transform radian choices into degrees
-  thresh <- 9 # Arbitrary radius, used to define magnitude
-  circle <- cddm.polarToRect(all.Angles,thresh)
-  magnitude <- rep(thresh,length(choice)) 
+  boundary <- 9 # Arbitrary radius, used to define magnitude
+  circle <- cddm.polarToRect(all.Angles,boundary)
+  magnitude <- rep(boundary,length(choice)) 
   coord.on.circumference <- cddm.polarToRect(choice,magnitude) #get Rectangular coordinates
   
   par(mfrow = c(1,2))  # Open space for 2 plots
