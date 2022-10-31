@@ -1,8 +1,6 @@
 ################################################################################
-################################################################################
 #####   Functions to load and process JAGS samples  ############################
 ################################################################################
-#########################################################   by Adriana F. Chavez
 library(posterior)
 
 ################################################################################
@@ -11,7 +9,7 @@ library(posterior)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # A function to extract all sample objects related to a specific parameter
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.extractSamples <- function(parameter.name, samples){
+myJAGS.extractSamples <- function(parameter.name, samples){
   # We use the sims.array and NOT sims.list and sims.matrix
   # https://sourceforge.net/p/mcmc-jags/discussion/610037/thread/cc61b820/
   postParam.Array <- samples$BUGSoutput$sims.array
@@ -56,7 +54,7 @@ myJAGSsampling.extractSamples <- function(parameter.name, samples){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # For any given parameter, merge all the chains into a single vector
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.mergeChains <- function(parameter.samples){
+myJAGS.mergeChains <- function(parameter.samples){
   nIter <- dim(parameter.samples)[1]
   nChains <- dim(parameter.samples)[2]
   nIterTotal <- nIter*nChains
@@ -96,7 +94,7 @@ myJAGSsampling.mergeChains <- function(parameter.samples){
 # For individual-per-task parameters, we rearrange the samples to fit into an
 # array with nParticipant rows by nTasks columns, extended across nIters pages.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.rearrangeSamples <- function(parameter.samples){
+myJAGS.rearrangeSamples <- function(parameter.samples){
   noDims <- length(dim(parameter.samples))
   
   if(noDims>2){
@@ -130,7 +128,7 @@ myJAGSsampling.rearrangeSamples <- function(parameter.samples){
 # Take our (I,J,iteration) array and transpose the rows and 
 # columns of every page
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.transpose3Darray <- function(initial3Darray){
+myJAGS.transpose3Darray <- function(initial3Darray){
   A <- nrow(initial3Darray)  
   B <- ncol(initial3Darray)
   nIterTotal <- dim(initial3Darray)[3]
@@ -146,7 +144,7 @@ myJAGSsampling.transpose3Darray <- function(initial3Darray){
 # For parameters expresed as a matrix (e.g theta[sub,task]), switch the
 # indices used across rows and columns to transpose the matrix.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.transposeSamples <- function(posterior.samples){
+myJAGS.transposeSamples <- function(posterior.samples){
   label <- substitute(posterior.samples)
   nIterTotal <- nrow(posterior.samples)  
   nParam <- dim(posterior.samples)[3]
@@ -183,7 +181,7 @@ myJAGSsampling.transposeSamples <- function(posterior.samples){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # A function to extract the deviance computed across all chains
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.extractDeviance <- function(samples){
+myJAGS.extractDeviance <- function(samples){
   #load(file = fileName)
   x <- samples$BUGSoutput$sims.array
   dev <- x[,,"deviance"]
@@ -193,7 +191,7 @@ myJAGSsampling.extractDeviance <- function(samples){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # A function to compute the Rhat of every chain
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.Rhat <- function(samples){
+myJAGS.Rhat <- function(samples){
   x <- samples$BUGSoutput$sims.array
   Rhats <- apply(x,3,rhat)
   return(Rhats)
@@ -203,7 +201,7 @@ myJAGSsampling.Rhat <- function(samples){
 # A function to test and identify which 
 # parameters have Rhats larger than maxRhat
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-myJAGSsampling.Rhat.max <- function(samples,maxRhat = 1.05){
+myJAGS.Rhat.max <- function(samples,maxRhat = 1.05){
   Rhats <- myJAGSsampling.Rhat(samples)
   exceedingRhats <- which(Rhats>maxRhat)
   if(length(exceedingRhats)>0){
@@ -214,12 +212,10 @@ myJAGSsampling.Rhat.max <- function(samples,maxRhat = 1.05){
   return(paste("The maximum value of Rhat observed was ", round(max,4), " which corresponds to: ", maxChain))
 }
 
-
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Get the maximum density point for a single vector of posterior samples
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-JAGSoutput.maxDensity <- function(vector){
+myJAGS.MAP <- function(vector){
   x.Density <- density(vector)$x
   y.Density <- density(vector)$y
   MAP = x.Density[y.Density==max(y.Density)]
