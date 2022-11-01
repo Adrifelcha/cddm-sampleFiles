@@ -93,50 +93,52 @@ recover <- function(data) {
   elapsed.time <- toc()$callback_msg   # Record time
   clock <- parse_number(elapsed.time)  # Extract the seconds
   ###########################################################################
-  
   # PROCESS SAMPLES
   ### Extract samples per parameter
-  driftLength  <- samples$BUGSoutput$sims.array[,,"drift"]
-  bound        <- samples$BUGSoutput$sims.array[,,"bound"]
-  nondecision  <- samples$BUGSoutput$sims.array[,,"ter0"]
-  driftAngle   <- samples$BUGSoutput$sims.array[,,"theta0"]
+  driftLength.samples  <- samples$BUGSoutput$sims.array[,,"drift"]
+  bound.samples        <- samples$BUGSoutput$sims.array[,,"bound"]
+  ndt.samples          <- samples$BUGSoutput$sims.array[,,"ter0"]
+  theta0.samples       <- samples$BUGSoutput$sims.array[,,"theta0"]
   
   ### Compute mean posterior per parameter
-  est.driftLength  <- mean( driftLength )
-  est.bound        <- mean( bound       )
-  est.nondecision  <- mean( nondecision )
-  est.driftAngle   <- mean( driftAngle  )
+  est.driftLength  <- mean( driftLength.samples )
+  est.bound        <- mean( bound.samples       )
+  est.nondecision  <- mean( ndt.samples         )
+  est.driftAngle   <- mean( theta0.samples      )
   mean.est <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
   
   # Compute MAP per parameter
-  map.driftLength  <- myJAGS.MAP( driftLength )
-  map.bound        <- myJAGS.MAP( bound       )
-  map.nondecision  <- myJAGS.MAP( nondecision )
-  map.driftAngle   <- myJAGS.MAP( driftAngle  )
+  map.driftLength  <- myJAGS.MAP( driftLength.samples )
+  map.bound        <- myJAGS.MAP( bound.samples       )
+  map.nondecision  <- myJAGS.MAP( ndt.samples         )
+  map.driftAngle   <- myJAGS.MAP( theta0.samples      )
   map.est <- c(map.driftLength, map.bound, map.nondecision, map.driftAngle)
   
   # Compute standard deviation
-  sd.driftLength  <- sd( driftLength )
-  sd.bound        <- sd( bound       )
-  sd.nondecision  <- sd( nondecision )
-  sd.driftAngle   <- sd( driftAngle  )
+  sd.driftLength  <- sd( driftLength.samples )
+  sd.bound        <- sd( bound.samples       )
+  sd.nondecision  <- sd( ndt.samples         )
+  sd.driftAngle   <- sd( theta0.samples      )
   sd.est <- c(sd.driftLength, sd.bound, sd.nondecision, sd.driftAngle)
-  
-  # Keep whole theta0 chains
-  theta0.samples <- samples$BUGSoutput$sims.array[,,"theta0"]
-  
+
   # Compute Rhats
   object <- samples$BUGSoutput$sims.array
   Rhats <- apply(object,3,Rhat)
   
   # Prepare recovery output
   output <- list(theta0.samples,
+                 driftLength.samples,
+                 bound.samples,
+                 ndt.samples,
                  mean.est, 
                  map.est,
                  sd.est, 
                  Rhats,
                  clock)
   names(output) <- c("theta0.samples",
+                     "driftLength.samples",
+                     "bound.samples",
+                     "ndt.samples",
                      "mean.estimates", 
                      "map.estimates",
                      "std.estimates", 
@@ -149,7 +151,7 @@ return(output)
 ###################################################################################
 # A function to run the simulation study
 ###################################################################################
-output.folder <- "./output/"
+output.folder <- "./output_fullMatrices/"
 
 run_sim_study <-function(run.id=NA){
   possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
@@ -159,8 +161,11 @@ run_sim_study <-function(run.id=NA){
   # True parameter values used to generate data
   trueValues <- array(NA, dim=c(possible.combinations,5))
   colnames(trueValues) <- c("trials",par.labels)
-  # Posterior chains for the drift angle
+  # Posterior chains
   theta0.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
+  ndt.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
+  driftL.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
+  bound.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
   # Mean posteriors
   retrievedValues <- array(NA,dim=c(iterations,4,possible.combinations))
   colnames(retrievedValues) <- par.labels
@@ -204,6 +209,9 @@ run_sim_study <-function(run.id=NA){
 			                    timers[i,page] <- Y$time.elapsed
 			                    rhats[i,,page] <- Y$Rhats
 			                    theta0.samples[,,i,page] <- Y$theta0.samples
+			                    ndt.samples[,,i,page] <- Y$ndt.samples
+			                    driftL.samples[,,i,page] <- Y$driftLength.samples
+			                    bound.samples[,,i,page] <- Y$bound.samples
                       }
                       
                       this.matrix.means <- retrievedValues[,,page]
@@ -212,6 +220,9 @@ run_sim_study <-function(run.id=NA){
                       this.matrix.rhats <- rhats[,,page]
                       this.timer <- timers[,page]
                       these.thetas <- theta0.samples[,,,page]
+                      these.ndts <- ndt.samples[,,,page]
+                      these.lengths <- driftLength.samples[,,,page]
+                      these.bounds <- bound.samples[,,,page]
                       
                       Z <- list(this.truth,
                                 this.matrix.means,
@@ -219,14 +230,20 @@ run_sim_study <-function(run.id=NA){
                                 this.matrix.MAPs,
                                 this.matrix.rhats,
                                 this.timer,
-                                these.thetas)
+                                these.thetas,
+                                these.ndts,
+                                these.lengths,
+                                these.bounds)
                       names(Z) <- c("current.truth",
                                     "current.matrix.means",
                                     "current.matrix.sd",
                                     "current.matrix.MAPs",
                                     "current.matrix.rhats",
                                     "current.timer",
-                                    "current.thetas")
+                                    "current.thetas",
+                                    "current.ndts",
+                                    "current.lengths",
+                                    "current.bounds")
                       
                       if(is.na(run.id)){ 
                                         parallel.run.id <- "_"
@@ -259,4 +276,54 @@ run_sim_study <-function(run.id=NA){
   save(mapValues, file = paste(output.folder,"simStudy_MAPs.RData",sep=""))
   save(timers, file = paste(output.folder,"simStudy_timers.RData",sep=""))
   save(theta0.samples, file = paste(output.folder,"simStudy_theta0.RData",sep=""))
+  save(ndt.samples, file = paste(output.folder,"simStudy_ndt.RData",sep=""))
+  save(driftL.samples, file = paste(output.folder,"simStudy_driftLength.RData",sep=""))
+  save(bound.samples, file = paste(output.folder,"simStudy_bound.RData",sep=""))
 }
+
+###################################################################################
+##  Run the simulation
+###################################################################################
+# test <- file.exists(paste(output.folder,"simStudy_Rhats.RData",sep=""))
+# 
+# if(!test){
+#       run_sim_study()
+# }else{
+#       if(FORCE.SIMULATION){
+#          run_sim_study() 
+#       }
+# }
+
+######################################################################################
+######            P L O T S                                  #########################
+######################################################################################
+if(test){
+          load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
+          load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
+          load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
+          load(paste(output.folder,"simStudy_std.RData",sep=""))
+          #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
+          load(paste(output.folder,"simStudy_timers.RData",sep=""))
+          load(paste(output.folder,"simStudy_theta0.RData",sep=""))
+}
+
+boxplot.perPar <- function(parameter.name, color="blue"){
+  par.levels <- table(array.True[,parameter.name])
+  par.values <- as.numeric(names(par.levels))
+  group.by.level <- matrix(NA,nrow=max(par.levels)*200,
+                           ncol=length(par.values))
+  colors <- paste(color,2:4,sep="")
+  for(i in 1:length(par.values)){
+          a <- par.values[i]
+          same.level <- array.True[,parameter.name]==a
+          group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
+      }
+  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
+  abline(h=par.values, col=colors, lty=2)
+  mtext(paste("Parameter:",parameter.name),3)
+}
+
+# boxplot.perPar("driftLength", "blue")
+# boxplot.perPar("ndt", "green")
+# boxplot.perPar("bound", "purple")
+# boxplot.perPar("driftAngle", "indianred")
