@@ -151,8 +151,8 @@ return(output)
 ###################################################################################
 # A function to run the simulation study
 ###################################################################################
-output.folder <- "./output_fullMatrices/"
-
+output.folder <- "./output_allChains/"
+run.id <- NA
 run_sim_study <-function(run.id=NA){
   possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
   
@@ -221,7 +221,7 @@ run_sim_study <-function(run.id=NA){
                       this.timer <- timers[,page]
                       these.thetas <- theta0.samples[,,,page]
                       these.ndts <- ndt.samples[,,,page]
-                      these.lengths <- driftLength.samples[,,,page]
+                      these.lengths <- driftL.samples[,,,page]
                       these.bounds <- bound.samples[,,,page]
                       
                       Z <- list(this.truth,
@@ -297,15 +297,15 @@ run_sim_study <-function(run.id=NA){
 ######################################################################################
 ######            P L O T S                                  #########################
 ######################################################################################
-if(test){
-          load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
-          load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-          load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-          load(paste(output.folder,"simStudy_std.RData",sep=""))
-          #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
-          load(paste(output.folder,"simStudy_timers.RData",sep=""))
-          load(paste(output.folder,"simStudy_theta0.RData",sep=""))
-}
+# if(test){
+#           load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
+#           load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
+#           load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
+#           load(paste(output.folder,"simStudy_std.RData",sep=""))
+#           #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
+#           load(paste(output.folder,"simStudy_timers.RData",sep=""))
+#           load(paste(output.folder,"simStudy_theta0.RData",sep=""))
+# }
 
 boxplot.perPar <- function(parameter.name, color="blue"){
   par.levels <- table(array.True[,parameter.name])
