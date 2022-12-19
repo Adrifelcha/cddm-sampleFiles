@@ -61,6 +61,7 @@ generate <- function(seed) {
 
 ### FUNCTION TO RECOVER PARAMETER VALUES
 n.iter = 2500
+n.burnin = 500
 recover <- function(data) {
   
   ### Write JAGS model 
@@ -88,7 +89,7 @@ recover <- function(data) {
   ### General sampling settings
   n.chains =   4
   n.iter   = n.iter
-  n.burnin = 500
+  n.burnin = n.burnin
   n.thin   =   1
   
   data <- list(X=data)
@@ -164,7 +165,7 @@ return(output)
 output.folder <- "./ignore/"
 simstudy.Name <- "simStudy_"
 
-run_sim_study <-function(){
+#run_sim_study <-function(){
   possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
   
   ############################## Create empty arrays to store the simulation output
@@ -173,10 +174,10 @@ run_sim_study <-function(){
   trueValues <- array(NA, dim=c(possible.combinations,5))
   colnames(trueValues) <- c("trials",par.labels)
   # Posterior chains
-  theta0.samples <- array(NA,dim=c(n.iter,4,iterations,possible.combinations))
-  ndt.samples <- array(NA,dim=c(n.iter,4,iterations,possible.combinations))
-  driftL.samples <- array(NA,dim=c(n.iter,4,iterations,possible.combinations))
-  bound.samples <- array(NA,dim=c(n.iter,4,iterations,possible.combinations))
+  theta0.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  ndt.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  driftL.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  bound.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
   # Mean posteriors
   retrievedValues <- array(NA,dim=c(iterations,4,possible.combinations))
   colnames(retrievedValues) <- par.labels
@@ -258,7 +259,7 @@ run_sim_study <-function(){
                       
                       fileName <- paste(output.folder,
                                         "set",page,
-                                        parallel.run.id,
+                                        "_",
                                         "n",n,
                                         "a",a,
                                         "b",b,
@@ -285,20 +286,20 @@ run_sim_study <-function(){
   save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
   save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
   save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
-}
+#}
 
 ###################################################################################
 ##  Run the simulation
 ###################################################################################
 test <- file.exists(paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
  
-if(!test){
-       run_sim_study()
- }else{
-       if(FORCE.SIMULATION){
-          run_sim_study() 
-       }
- }
+# if(!test){
+#        run_sim_study()
+#  }else{
+#        if(FORCE.SIMULATION){
+#           run_sim_study() 
+#        }
+#  }
 
 ######################################################################################
 #####  CONVERGENCE CHECKS
