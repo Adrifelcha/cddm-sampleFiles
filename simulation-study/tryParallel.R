@@ -4,6 +4,7 @@ library(magrittr)
 library(rstan)
 library(readr)
 library(tictoc)
+library(dclone)
 
 # Load Rscripts with functions required to generate data
 source("../Functions/generateRandomParameterValues.R")
@@ -17,14 +18,21 @@ load.module("cddm")
 ##########################################################
 FORCE.SIMULATION <- FALSE
 
-iterations <- 200
+#iterations <- 200
+iterations <- 5
 
 # List of values to be used in simulation study
-sampleSize.list   <-  c(100, 500, 2500)
-driftAngle.list   <-  c(0.0, 2.0, 4.0)
-driftLength.list  <-  c(0.0, 1.0, 2.0)
-bound.list        <-  c(1.5, 2.0, 2.5)
-nondecision.list  <-  c(0.1, 0.2, 0.3)
+# sampleSize.list   <-  c(100, 500, 2500)
+# driftAngle.list   <-  c(0.0, 2.0, 4.0)
+# driftLength.list  <-  c(0.0, 1.0, 2.0)
+# bound.list        <-  c(1.5, 2.0, 2.5)
+# nondecision.list  <-  c(0.1, 0.2, 0.3)
+
+sampleSize.list   <-  c(100)
+driftAngle.list   <-  c(2.0, 4.0)
+driftLength.list  <-  c(1.0, 2.0)
+bound.list        <-  c(2.0, 2.5)
+nondecision.list  <-  c(0.2, 0.3)
 
 # Identify maximum valid index for every list
 s.topIdx  <-  length(sampleSize.list)
@@ -52,6 +60,8 @@ generate <- function(seed) {
 }
 
 ### FUNCTION TO RECOVER PARAMETER VALUES
+n.iter = 2500
+n.burnin = 500
 recover <- function(data) {
   
   ### Write JAGS model 
@@ -78,8 +88,8 @@ recover <- function(data) {
   
   ### General sampling settings
   n.chains =   4
-  n.iter   = 2500 
-  n.burnin = 500
+  n.iter   = n.iter
+  n.burnin = n.burnin
   n.thin   =   1
   
   data <- list(X=data)
@@ -87,9 +97,10 @@ recover <- function(data) {
 
   ########## RUN MODEL ######################################################
   tic()  # Set timer
-  samples <- jags(data=data, parameters.to.save=parameters, model=modelFile, 
-                  n.chains=n.chains, n.iter=n.iter, n.burnin=n.burnin, 
-                  n.thin=n.thin, DIC=T)
+  samples <- jags.parallel(data = data, parameters.to.save =parameters, 
+                           model.file = modelFile, jags.module = 'cddm',
+                           n.chains = n.chains, n.iter = n.iter, n.burnin = n.burnin, n.thin=n.thin, DIC=T)
+  
   elapsed.time <- toc()$callback_msg   # Record time
   clock <- parse_number(elapsed.time)  # Extract the seconds
   ###########################################################################
@@ -151,9 +162,10 @@ return(output)
 ###################################################################################
 # A function to run the simulation study
 ###################################################################################
-output.folder <- "./output_allChains/"
-run.id <- NA
-run_sim_study <-function(run.id=NA){
+output.folder <- "./ignore/"
+simstudy.Name <- "simStudy_"
+
+#run_sim_study <-function(){
   possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
   
   ############################## Create empty arrays to store the simulation output
@@ -162,10 +174,10 @@ run_sim_study <-function(run.id=NA){
   trueValues <- array(NA, dim=c(possible.combinations,5))
   colnames(trueValues) <- c("trials",par.labels)
   # Posterior chains
-  theta0.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  ndt.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  driftL.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  bound.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
+  theta0.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  ndt.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  driftL.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
+  bound.samples <- array(NA,dim=c(n.iter-n.burnin,4,iterations,possible.combinations))
   # Mean posteriors
   retrievedValues <- array(NA,dim=c(iterations,4,possible.combinations))
   colnames(retrievedValues) <- par.labels
@@ -182,10 +194,10 @@ run_sim_study <-function(run.id=NA){
   
   ############################## Run simulation
   page <- 1
-  for(n in 1:n.topIdx){
-      for(a in 1:a.topIdx){
-          for(b in 1:b.topIdx){
-              for(m in 1:m.topIdx){
+  for(m in 1:m.topIdx){
+      for(b in 1:b.topIdx){
+          for(n in 1:n.topIdx){
+              for(a in 1:a.topIdx){
                   for(s in 1:s.topIdx){
                       sampleSize       <-   sampleSize.list  [s]
 	                    true.driftAngle  <-   driftAngle.list  [a] 
@@ -245,19 +257,13 @@ run_sim_study <-function(run.id=NA){
                                     "current.lengths",
                                     "current.bounds")
                       
-                      if(is.na(run.id)){ 
-                                        parallel.run.id <- "_"
-                      }else{
-                            parallel.run.id <- paste("_",run.id,"_",sep="")
-                      }
-                       
                       fileName <- paste(output.folder,
-                                        "subset",page,
-                                        parallel.run.id,
-                                        "n",n,"-",
-                                        "a",a,"-",
-                                        "b",b,"-",
-                                        "m",m,"-",
+                                        "set",page,
+                                        "_",
+                                        "n",n,
+                                        "a",a,
+                                        "b",b,
+                                        "m",m,
                                         "s",s,".RData",sep="")
                       save(Z, file=fileName)
                        
@@ -268,61 +274,72 @@ run_sim_study <-function(run.id=NA){
         }
     }
 
+  
   colnames(rhats) <- names(Y$Rhats)
-  save(rhats, file = paste(output.folder,"simStudy_Rhats.RData",sep=""))
-  save(trueValues, file = paste(output.folder,"simStudy_trueValues.RData",sep=""))
-  save(retrievedValues, file = paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-  save(retrievedValues_sd, file = paste(output.folder,"simStudy_std.RData",sep=""))
-  save(mapValues, file = paste(output.folder,"simStudy_MAPs.RData",sep=""))
-  save(timers, file = paste(output.folder,"simStudy_timers.RData",sep=""))
-  save(theta0.samples, file = paste(output.folder,"simStudy_theta0.RData",sep=""))
-  save(ndt.samples, file = paste(output.folder,"simStudy_ndt.RData",sep=""))
-  save(driftL.samples, file = paste(output.folder,"simStudy_driftLength.RData",sep=""))
-  save(bound.samples, file = paste(output.folder,"simStudy_bound.RData",sep=""))
-}
+  save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+  save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+  save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+  save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
+  save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+  save(timers, file = paste(output.folder,simstudy.Name,"timers.RData",sep=""))
+  save(theta0.samples, file = paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
+  save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
+  save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
+  save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
+#}
 
 ###################################################################################
 ##  Run the simulation
 ###################################################################################
-# test <- file.exists(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-# 
+test <- file.exists(paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+ 
 # if(!test){
-#       run_sim_study()
-# }else{
-#       if(FORCE.SIMULATION){
-#          run_sim_study() 
-#       }
-# }
+#        run_sim_study()
+#  }else{
+#        if(FORCE.SIMULATION){
+#           run_sim_study() 
+#        }
+#  }
+
+######################################################################################
+#####  CONVERGENCE CHECKS
+######################################################################################
+hist(rhats)
+abline(v=1.05, col="red", lty=2)
+legend("top","Rhat = 1.05", lty=2, col="red", cex=0.4)
+
+bad.Rhat <- which(rhats>1.04,arr.ind = TRUE)
+colnames(rhats[,bad.Rhat[,2],])
+
 
 ######################################################################################
 ######            P L O T S                                  #########################
 ######################################################################################
-
-# if(test){
-#           load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
-#           load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-#           load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-#           load(paste(output.folder,"simStudy_std.RData",sep=""))
-#           #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
-#           load(paste(output.folder,"simStudy_timers.RData",sep=""))
-#           load(paste(output.folder,"simStudy_theta0.RData",sep=""))
-# }
-
-boxplot.perPar <- function(parameter.name, color="blue"){
-  par.levels <- table(array.True[,parameter.name])
-  par.values <- as.numeric(names(par.levels))
-  group.by.level <- matrix(NA,nrow=max(par.levels)*200,
-                           ncol=length(par.values))
-  colors <- paste(color,2:4,sep="")
-  for(i in 1:length(par.values)){
-          a <- par.values[i]
-          same.level <- array.True[,parameter.name]==a
-          group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
-      }
-  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
-  abline(h=par.values, col=colors, lty=2)
-  mtext(paste("Parameter:",parameter.name),3)
+if(test){
+          load(paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"std.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"timers.RData",sep=""))
+          load(paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
 }
+
+# boxplot.perPar <- function(parameter.name, color="blue"){
+#   par.levels <- table(array.True[,parameter.name])
+#   par.values <- as.numeric(names(par.levels))
+#   group.by.level <- matrix(NA,nrow=max(par.levels)*200,
+#                            ncol=length(par.values))
+#   colors <- paste(color,2:4,sep="")
+#   for(i in 1:length(par.values)){
+#           a <- par.values[i]
+#           same.level <- array.True[,parameter.name]==a
+#           group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
+#       }
+#   boxplot(group.by.level, col=colors, pch=16, cex=0.5)
+#   abline(h=par.values, col=colors, lty=2)
+#   mtext(paste("Parameter:",parameter.name),3)
+# }
 
 # boxplot.perPar("driftLength", "blue")
 # boxplot.perPar("ndt", "green")

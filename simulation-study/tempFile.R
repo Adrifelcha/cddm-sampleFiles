@@ -16,23 +16,18 @@ colnames(retrievedValues_sd) <- par.labels
 
 rhats <- array(NA,dim=c(iterations,5,possible.combinations))
 timers <- array(NA,dim=c(iterations,possible.combinations))
+theta0.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
 
 set.number <- 1
-for(archive in dir("./output/")){
-  load(paste("./output/",archive,sep=""))
+for(archive in dir("./output_fullThetas/")){
+  load(paste("./output_fullThetas/",archive,sep=""))
   
-  names(Z) <- c("current.truth",
-                "current.matrix.means",
-                "current.matrix.sd",
-                "current.matrix.rhats",
-                "current.timer")
-
   trueValues[set.number,] <- Z$current.truth
   retrievedValues[,,set.number] <- Z$current.matrix.means
   retrievedValues_sd[,,set.number] <- Z$current.matrix.sd
   timers[,set.number] <- Z$current.timer
   rhats[,,set.number] <- Z$current.matrix.rhats
-  
+  theta0.samples[,,,set.number] <- Z$current.thetas
   set.number <- set.number +1
 }
 
@@ -66,7 +61,7 @@ makeBoxplot <- function(array.True, array.Retrieved, fix.by="driftAngle"){
   pars <- colnames(array.Retrieved)
   rotatingPars <- pars[-which(pars==fix.by)]
   
-    #for(ter in ndt.Levels){
+    for(ter in ndt.Levels){
         same.ndt <- array.True[,"ndt"]==ter
         for(size in size.Levels){
             same.size <- array.True[,"trials"]==size
@@ -93,5 +88,6 @@ makeBoxplot <- function(array.True, array.Retrieved, fix.by="driftAngle"){
         }  
     }
 }
+
 
 makeBoxplot(trueValues, retrievedValues)
