@@ -306,3 +306,34 @@ colnames(rhats[,bad.Rhat[,2],])
 ######################################################################################
 ######            P L O T S                                  #########################
 ######################################################################################
+
+# if(test){
+#           load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
+#           load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
+#           load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
+#           load(paste(output.folder,"simStudy_std.RData",sep=""))
+#           #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
+#           load(paste(output.folder,"simStudy_timers.RData",sep=""))
+#           load(paste(output.folder,"simStudy_theta0.RData",sep=""))
+# }
+
+boxplot.perPar <- function(parameter.name, color="blue"){
+  par.levels <- table(array.True[,parameter.name])
+  par.values <- as.numeric(names(par.levels))
+  group.by.level <- matrix(NA,nrow=max(par.levels)*200,
+                           ncol=length(par.values))
+  colors <- paste(color,2:4,sep="")
+  for(i in 1:length(par.values)){
+          a <- par.values[i]
+          same.level <- array.True[,parameter.name]==a
+          group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
+      }
+  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
+  abline(h=par.values, col=colors, lty=2)
+  mtext(paste("Parameter:",parameter.name),3)
+}
+
+# boxplot.perPar("driftLength", "blue")
+# boxplot.perPar("ndt", "green")
+# boxplot.perPar("bound", "purple")
+# boxplot.perPar("driftAngle", "indianred")
