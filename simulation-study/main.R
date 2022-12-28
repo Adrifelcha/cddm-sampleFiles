@@ -1,22 +1,28 @@
-# Load required R libraries
-library(R2jags)
-library(magrittr)
-library(rstan)
-library(readr)
-library(tictoc)
-
-# Load Rscripts with functions required to generate data
-source("../Functions/generateRandomParameterValues.R")
-source("../Functions/simulateDataCDDM.R")
-source("../Functions/processJAGSsamples.R")
-
-# Load JAGS modules
-load.module("cddm")
 ##########################################################
-# Simulation settings
+# LOAD FUNCTIONS/PACKAGES
 ##########################################################
-FORCE.SIMULATION <- FALSE
+######## Install/Load required R packages
+    # Required packages
+    list.of.packages <- c("R2jags", "magrittr", "rstan", "tictoc", "readr")
+    # Install if not already installed
+    new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+    if(length(new.packages) > 0){  install.packages(new.packages, dep=TRUE) }
+    # Load packages
+    for(package.i in list.of.packages){
+        suppressPackageStartupMessages(library(package.i, character.only = TRUE))
+    }
 
+###### Load R scripts with functions required to generate data
+    source("../Functions/generateRandomParameterValues.R")
+    source("../Functions/simulateDataCDDM.R")
+    source("../Functions/processJAGSsamples.R")
+
+###### Load JAGS modules
+    load.module("cddm")
+    
+##########################################################
+# SIMULATION SETTINGS
+##########################################################
 iterations <- 200
 
 # List of values to be used in simulation study
@@ -32,131 +38,137 @@ a.topIdx  <-  length(driftAngle.list)
 m.topIdx  <-  length(driftLength.list)   # 'm' for magnitude
 b.topIdx  <-  length(bound.list)
 n.topIdx  <-  length(nondecision.list)
+possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
+
+# Settings to be passed into JAGS
+n.iter    = 2500
+n.burnin  = 500
+n.chains  = 4
+n.thin    = 1
+
+# Output setup
+output.folder <- "./output_dec22/"
+simstudy.Name <- "simStudy_"
 
 ################################################################
-# Define functions for Generating data and Recovering parameters
+# MAIN FUNCTIONS: Generating data and Recovering parameters
 ################################################################
-### FUNCTION TO GENERATE DATA
+
+######## Function to GENERATE DATA
 generate <- function(seed) {
-  set.seed(seed)
-  
-  X <-  cddm.simData(
-      trials = sampleSize,
-      drift.Angle = true.driftAngle,
-      drift.Length = true.driftLength,	
-      boundary = true.bound,
-      ndt = true.nondecision)$data
-
-  output <- t(X)
-  return(output)
+        set.seed(seed)
+        X <- cddm.simData(
+                          trials = sampleSize,
+                          drift.Angle = true.driftAngle,
+                          drift.Length = true.driftLength,	
+                          boundary = true.bound,
+                          ndt = true.nondecision)$data
+        output <- t(X)
+        return(output)
 }
 
-### FUNCTION TO RECOVER PARAMETER VALUES
+######## Function to RECOVER parameter values
 recover <- function(data) {
-  
-  ### Write JAGS model 
-  modelFile <- "cddm_JAGSmodel.bug"
-  write('
-      data {
-            tmin <- 0.95 * min(X[2,])
-            D <- dim(X)
-            N <- D[1]
-      }
-      model{
-            # Likelihood
-              for (i in 1:N) {
-                   X[1:2,i] ~ dcddm(drift, bound, ter0, theta0)
-              }
-                
-            # Priors
-              drift  ~ dnorm(0, 1)T(0,)
-              theta0 ~ dnorm(0, 0.1)
-              bound  ~ dgamma(3, 2)
-              ter0   ~ dexp(1)T(, tmin)
-            }',
-        modelFile)
-  
-  ### General sampling settings
-  n.chains =   4
-  n.iter   = 2500 
-  n.burnin = 500
-  n.thin   =   1
-  
-  data <- list(X=data)
-  parameters <- c("drift", "bound", "ter0", "theta0")
+      ### Write JAGS model  #########################
+      modelFile <- "cddm_JAGSmodel.bug"
+      write('
+              data {
+                    tmin <- 0.95 * min(X[2,])
+                    D <- dim(X)
+                    N <- D[1]
+                    }
+              model{
+                    # Likelihood
+                      for (i in 1:N) {
+                           X[1:2,i] ~ dcddm(drift, bound, ter0, theta0)
+                      }
+                    # Priors
+                      drift  ~ dnorm(0, 1)T(0,)
+                      theta0 ~ dnorm(0, 0.1)
+                      bound  ~ dgamma(3, 2)
+                      ter0   ~ dexp(1)T(, tmin)
+                    }',
+            modelFile)
 
-  ########## RUN MODEL ######################################################
-  tic()  # Set timer
-  samples <- jags(data=data, parameters.to.save=parameters, model=modelFile, 
-                  n.chains=n.chains, n.iter=n.iter, n.burnin=n.burnin, 
-                  n.thin=n.thin, DIC=T)
-  elapsed.time <- toc()$callback_msg   # Record time
-  clock <- parse_number(elapsed.time)  # Extract the seconds
-  ###########################################################################
-  # PROCESS SAMPLES
-  ### Extract samples per parameter
-  driftLength.samples  <- samples$BUGSoutput$sims.array[,,"drift"]
-  bound.samples        <- samples$BUGSoutput$sims.array[,,"bound"]
-  ndt.samples          <- samples$BUGSoutput$sims.array[,,"ter0"]
-  theta0.samples       <- samples$BUGSoutput$sims.array[,,"theta0"]
-  
-  ### Compute mean posterior per parameter
-  est.driftLength  <- mean( driftLength.samples )
-  est.bound        <- mean( bound.samples       )
-  est.nondecision  <- mean( ndt.samples         )
-  est.driftAngle   <- mean( theta0.samples      )
-  mean.est <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
-  
-  # Compute MAP per parameter
-  map.driftLength  <- myJAGS.MAP( driftLength.samples )
-  map.bound        <- myJAGS.MAP( bound.samples       )
-  map.nondecision  <- myJAGS.MAP( ndt.samples         )
-  map.driftAngle   <- myJAGS.MAP( theta0.samples      )
-  map.est <- c(map.driftLength, map.bound, map.nondecision, map.driftAngle)
-  
-  # Compute standard deviation
-  sd.driftLength  <- sd( driftLength.samples )
-  sd.bound        <- sd( bound.samples       )
-  sd.nondecision  <- sd( ndt.samples         )
-  sd.driftAngle   <- sd( theta0.samples      )
-  sd.est <- c(sd.driftLength, sd.bound, sd.nondecision, sd.driftAngle)
+      ### General sampling settings
+      n.chains =  n.chains
+      n.iter   =  n.iter
+      n.burnin =  n.burnin
+      n.thin   =  n.thin
 
-  # Compute Rhats
-  object <- samples$BUGSoutput$sims.array
-  Rhats <- apply(object,3,Rhat)
-  
-  # Prepare recovery output
-  output <- list(theta0.samples,
-                 driftLength.samples,
-                 bound.samples,
-                 ndt.samples,
-                 mean.est, 
-                 map.est,
-                 sd.est, 
-                 Rhats,
-                 clock)
-  names(output) <- c("theta0.samples",
-                     "driftLength.samples",
-                     "bound.samples",
-                     "ndt.samples",
-                     "mean.estimates", 
-                     "map.estimates",
-                     "std.estimates", 
-                     "Rhats",
-                     "time.elapsed")
+      data <- list(X=data)
+      parameters <- c("drift", "bound", "ter0", "theta0")
+
+      ########## RUN MODEL ######################################################
+      tic()  # Set timer
+      samples <- jags.parallel(data = data, parameters.to.save =parameters,
+                               model.file = modelFile, jags.module = 'cddm',
+                               n.chains = n.chains, n.iter = n.iter, n.burnin = n.burnin, n.thin=n.thin, DIC=T)
+      elapsed.time <- toc()$callback_msg   # Record time
+      clock <- parse_number(elapsed.time)  # Extract the seconds
+      ###########################################################################
+      # PROCESS SAMPLES
+      ### Extract samples per parameter
+      driftLength.samples  <- samples$BUGSoutput$sims.array[,,"drift"]
+      bound.samples        <- samples$BUGSoutput$sims.array[,,"bound"]
+      ndt.samples          <- samples$BUGSoutput$sims.array[,,"ter0"]
+      theta0.samples       <- samples$BUGSoutput$sims.array[,,"theta0"]
+
+      ### Compute mean posterior per parameter
+      est.driftLength  <- mean( driftLength.samples )
+      est.bound        <- mean( bound.samples       )
+      est.nondecision  <- mean( ndt.samples         )
+      est.driftAngle   <- mean( theta0.samples      )
+      mean.est <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
+
+      # Compute MAP per parameter
+      map.driftLength  <- myJAGS.MAP( driftLength.samples )
+      map.bound        <- myJAGS.MAP( bound.samples       )
+      map.nondecision  <- myJAGS.MAP( ndt.samples         )
+      map.driftAngle   <- myJAGS.MAP( theta0.samples      )
+      map.est <- c(map.driftLength, map.bound, map.nondecision, map.driftAngle)
+
+      # Compute standard deviation
+      sd.driftLength  <- sd( driftLength.samples )
+      sd.bound        <- sd( bound.samples       )
+      sd.nondecision  <- sd( ndt.samples         )
+      sd.driftAngle   <- sd( theta0.samples      )
+      sd.est <- c(sd.driftLength, sd.bound, sd.nondecision, sd.driftAngle)
+
+      # Compute Rhats
+      object <- samples$BUGSoutput$sims.array
+      Rhats <- apply(object,3,Rhat)
+
+      # Prepare recovery output
+      output <- list(theta0.samples,
+                     driftLength.samples,
+                     bound.samples,
+                     ndt.samples,
+                     mean.est,
+                     map.est,
+                     sd.est,
+                     Rhats,
+                     clock)
+      names(output) <- c("theta0.samples",
+                         "driftLength.samples",
+                         "bound.samples",
+                         "ndt.samples",
+                         "mean.estimates",
+                         "map.estimates",
+                         "std.estimates",
+                         "Rhats",
+                         "time.elapsed")
   
 return(output)
 }
 
 ###################################################################################
-# A function to run the simulation study
+##  Run the simulation
 ###################################################################################
-output.folder <- "./output_allChains/"
-run.id <- NA
-run_sim_study <-function(run.id=NA){
-  possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
+
+possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
   
-  ############################## Create empty arrays to store the simulation output
+################ Create empty arrays to store the simulation output
   par.labels <- c("driftLength","bound","ndt","driftAngle") # Shared labels
   # True parameter values used to generate data
   trueValues <- array(NA, dim=c(possible.combinations,5))
@@ -180,7 +192,7 @@ run_sim_study <-function(run.id=NA){
   # Seconds elapsed per simulation
   timers <- array(NA,dim=c(iterations,possible.combinations))
   
-  ############################## Run simulation
+  ################ Run simulation
   page <- 1
   for(n in 1:n.topIdx){
       for(a in 1:a.topIdx){
@@ -268,62 +280,29 @@ run_sim_study <-function(run.id=NA){
         }
     }
 
-  colnames(rhats) <- names(Y$Rhats)
-  save(rhats, file = paste(output.folder,"simStudy_Rhats.RData",sep=""))
-  save(trueValues, file = paste(output.folder,"simStudy_trueValues.RData",sep=""))
-  save(retrievedValues, file = paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-  save(retrievedValues_sd, file = paste(output.folder,"simStudy_std.RData",sep=""))
-  save(mapValues, file = paste(output.folder,"simStudy_MAPs.RData",sep=""))
-  save(timers, file = paste(output.folder,"simStudy_timers.RData",sep=""))
-  save(theta0.samples, file = paste(output.folder,"simStudy_theta0.RData",sep=""))
-  save(ndt.samples, file = paste(output.folder,"simStudy_ndt.RData",sep=""))
-  save(driftL.samples, file = paste(output.folder,"simStudy_driftLength.RData",sep=""))
-  save(bound.samples, file = paste(output.folder,"simStudy_bound.RData",sep=""))
-}
+colnames(rhats) <- names(Y$Rhats)
+save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
+save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+save(timers, file = paste(output.folder,simstudy.Name,"timers.RData",sep=""))
+save(theta0.samples, file = paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
+save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
+save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
+save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
 
-###################################################################################
-##  Run the simulation
-###################################################################################
-# test <- file.exists(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-# 
-# if(!test){
-#       run_sim_study()
-# }else{
-#       if(FORCE.SIMULATION){
-#          run_sim_study() 
-#       }
-# }
+
+######################################################################################
+#####  CONVERGENCE CHECKS
+######################################################################################
+hist(rhats)
+abline(v=1.05, col="red", lty=2)
+legend("top","Rhat = 1.05", lty=2, col="red", cex=0.4)
+
+bad.Rhat <- which(rhats>1.04,arr.ind = TRUE)
+colnames(rhats[,bad.Rhat[,2],])
 
 ######################################################################################
 ######            P L O T S                                  #########################
 ######################################################################################
-# if(test){
-#           load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
-#           load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-#           load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-#           load(paste(output.folder,"simStudy_std.RData",sep=""))
-#           #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
-#           load(paste(output.folder,"simStudy_timers.RData",sep=""))
-#           load(paste(output.folder,"simStudy_theta0.RData",sep=""))
-# }
-
-boxplot.perPar <- function(parameter.name, color="blue"){
-  par.levels <- table(array.True[,parameter.name])
-  par.values <- as.numeric(names(par.levels))
-  group.by.level <- matrix(NA,nrow=max(par.levels)*200,
-                           ncol=length(par.values))
-  colors <- paste(color,2:4,sep="")
-  for(i in 1:length(par.values)){
-          a <- par.values[i]
-          same.level <- array.True[,parameter.name]==a
-          group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
-      }
-  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
-  abline(h=par.values, col=colors, lty=2)
-  mtext(paste("Parameter:",parameter.name),3)
-}
-
-# boxplot.perPar("driftLength", "blue")
-# boxplot.perPar("ndt", "green")
-# boxplot.perPar("bound", "purple")
-# boxplot.perPar("driftAngle", "indianred")
