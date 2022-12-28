@@ -78,7 +78,7 @@ recover <- function(data) {
               data{
                     tmin <- 0.95 * min(X[2,])
                     D <- dim(X)
-                    N <- D[1]
+                    N <- D[2]
                     }
               model{
                     # Likelihood
