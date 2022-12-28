@@ -50,10 +50,12 @@ n.thin    = 1
 output.folder <- "./output_dec22/"
 simstudy.Name <- "simStudy_"
 
+# Determine whether simulation output is already available
+test <- !file.exists(file=paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+
 ################################################################
 # MAIN FUNCTIONS: Generating data and Recovering parameters
 ################################################################
-
 ######## Function to GENERATE DATA
 generate <- function(seed) {
         set.seed(seed)
@@ -75,7 +77,7 @@ recover <- function(data) {
               data {
                     tmin <- 0.95 * min(X[2,])
                     D <- dim(X)
-                    N <- D[1]
+                    N <- D[2]
                     }
               model{
                     # Likelihood
@@ -165,175 +167,178 @@ return(output)
 ###################################################################################
 ##  Run the simulation
 ###################################################################################
+if(test){
+######## Define size variables
+    # Parameter labels
+      par.labels <- c("driftLength","bound","ndt","driftAngle")
+    # No. of parameters
+      npar <- length(par.labels)
+    # Extensive no. of columns (for True value matrix and Rhats)
+      ncols <- npar+1
+    # Number of samples kept per chain
+      nrows <- n.iter-n.burnin
+    # Total number of samples per parameter
+      total.samples <- nrows*n.chains
 
-possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
+######## Create empty arrays to store the simulation output 
+      # True parameter values used to generate data
+        trueValues            <- array(NA, dim=c(possible.combinations,ncols))
+        colnames(trueValues)  <- c("trials",par.labels)
+      # Posterior chains
+        posterior.chains  <- array(NA,dim=c(nrows,npar,iterations,possible.combinations))
+        theta0.samples    <- posterior.chains
+        ndt.samples       <- posterior.chains
+        driftL.samples    <- posterior.chains
+        bound.samples     <- posterior.chains
+      # Mean posteriors
+        retrievedValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
+        colnames(retrievedValues) <- par.labels
+      # Standard deviation
+        retrievedValues_sd            <- array(NA,dim=c(iterations,npar,possible.combinations))
+        colnames(retrievedValues_sd)  <- par.labels
+      # MAP
+        mapValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
+        colnames(mapValues) <- par.labels
+      # R hats
+        rhats   <- array(NA,dim=c(iterations,ncols,possible.combinations))
+      # Seconds elapsed per simulation
+        timers  <- array(NA,dim=c(iterations,possible.combinations))
   
-################ Create empty arrays to store the simulation output
-  par.labels <- c("driftLength","bound","ndt","driftAngle") # Shared labels
-  # True parameter values used to generate data
-  trueValues <- array(NA, dim=c(possible.combinations,5))
-  colnames(trueValues) <- c("trials",par.labels)
-  # Posterior chains
-  theta0.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  ndt.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  driftL.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  bound.samples <- array(NA,dim=c(2000,4,iterations,possible.combinations))
-  # Mean posteriors
-  retrievedValues <- array(NA,dim=c(iterations,4,possible.combinations))
-  colnames(retrievedValues) <- par.labels
-  # Standard deviation
-  retrievedValues_sd <- array(NA,dim=c(iterations,4,possible.combinations))
-  colnames(retrievedValues_sd) <- par.labels
-  # MAP
-  mapValues <- array(NA,dim=c(iterations,4,possible.combinations))
-  colnames(mapValues) <- par.labels
-  # R hats
-  rhats <- array(NA,dim=c(iterations,5,possible.combinations))
-  # Seconds elapsed per simulation
-  timers <- array(NA,dim=c(iterations,possible.combinations))
-  
-  ################ Run simulation
-  page <- 1
-  for(n in 1:n.topIdx){
-      for(a in 1:a.topIdx){
-          for(b in 1:b.topIdx){
-              for(m in 1:m.topIdx){
-                  for(s in 1:s.topIdx){
-                      sampleSize       <-   sampleSize.list  [s]
-	                    true.driftAngle  <-   driftAngle.list  [a] 
-		                  true.driftLength <-   driftLength.list [m]
-		                  true.bound       <-   bound.list       [b]
-		                  true.nondecision <-   nondecision.list [n]
-                       
-                      this.truth <- c(sampleSize,
-                                      true.driftLength,
-                                      true.bound,
-                                      true.nondecision,
-                                      true.driftAngle)
-                      trueValues[page,] <- this.truth
-		                  
-                      for(i in 1:iterations){
-			                    X <- generate(seed = i)
-			                    Y <- recover(data = X) 
-			                    retrievedValues[i,,page] <- Y$mean.estimates
-			                    retrievedValues_sd[i,,page] <- Y$std.estimates
-			                    mapValues[i,,page] <- Y$map.estimates
-			                    timers[i,page] <- Y$time.elapsed
-			                    rhats[i,,page] <- Y$Rhats
-			                    theta0.samples[,,i,page] <- Y$theta0.samples
-			                    ndt.samples[,,i,page] <- Y$ndt.samples
-			                    driftL.samples[,,i,page] <- Y$driftLength.samples
-			                    bound.samples[,,i,page] <- Y$bound.samples
-                      }
-                      
-                      this.matrix.means <- retrievedValues[,,page]
-                      this.matrix.sd <- retrievedValues_sd[,,page]
-                      this.matrix.MAPs <- mapValues[,,page]
-                      this.matrix.rhats <- rhats[,,page]
-                      this.timer <- timers[,page]
-                      these.thetas <- theta0.samples[,,,page]
-                      these.ndts <- ndt.samples[,,,page]
-                      these.lengths <- driftL.samples[,,,page]
-                      these.bounds <- bound.samples[,,,page]
-                      
-                      Z <- list(this.truth,
-                                this.matrix.means,
-                                this.matrix.sd,
-                                this.matrix.MAPs,
-                                this.matrix.rhats,
-                                this.timer,
-                                these.thetas,
-                                these.ndts,
-                                these.lengths,
-                                these.bounds)
-                      names(Z) <- c("current.truth",
-                                    "current.matrix.means",
-                                    "current.matrix.sd",
-                                    "current.matrix.MAPs",
-                                    "current.matrix.rhats",
-                                    "current.timer",
-                                    "current.thetas",
-                                    "current.ndts",
-                                    "current.lengths",
-                                    "current.bounds")
-                      
-                      if(is.na(run.id)){ 
-                                        parallel.run.id <- "_"
-                      }else{
-                            parallel.run.id <- paste("_",run.id,"_",sep="")
-                      }
-                       
-                      fileName <- paste(output.folder,
-                                        "subset",page,
-                                        parallel.run.id,
-                                        "n",n,"-",
-                                        "a",a,"-",
-                                        "b",b,"-",
-                                        "m",m,"-",
-                                        "s",s,".RData",sep="")
-                      save(Z, file=fileName)
-                       
-                      page <- page+1
-		                  }
-	               }
-	           }
+######## Run simulation
+    page <- 1
+    for(m in 1:n.topIdx){
+        for(b in 1:a.topIdx){
+            for(n in 1:b.topIdx){
+                for(a in 1:m.topIdx){
+                    for(s in 1:s.topIdx){
+                        sampleSize       <-   sampleSize.list  [s]
+                        true.driftAngle  <-   driftAngle.list  [a] 
+    	                  true.driftLength <-   driftLength.list [m]
+    	                  true.bound       <-   bound.list       [b]
+    	                  true.nondecision <-   nondecision.list [n]
+                           
+                        this.truth        <-  c(sampleSize,
+                                                true.driftLength,
+                                                true.bound,
+                                                true.nondecision,
+                                                true.driftAngle)
+                        trueValues[page,] <- this.truth
+    		                  
+                          for(i in 1:iterations){
+    			                    X   <-  generate(seed = i)
+    			                    Y   <-  recover(data = X) 
+    			                    retrievedValues[i,,page]    <- Y$mean.estimates
+    			                    retrievedValues_sd[i,,page] <- Y$std.estimates
+    			                    mapValues[i,,page]          <- Y$map.estimates
+    			                    timers[i,page]              <- Y$time.elapsed
+    			                    rhats[i,,page]              <- Y$Rhats
+    			                    theta0.samples[,,i,page]    <- Y$theta0.samples
+    			                    ndt.samples[,,i,page]       <- Y$ndt.samples
+    			                    driftL.samples[,,i,page]    <- Y$driftLength.samples
+    			                    bound.samples[,,i,page]     <- Y$bound.samples
+                          }
+                          
+                          this.matrix.means <- retrievedValues[,,page]
+                          this.matrix.sd    <- retrievedValues_sd[,,page]
+                          this.matrix.MAPs  <- mapValues[,,page]
+                          this.matrix.rhats <- rhats[,,page]
+                          this.timer        <- timers[,page]
+                          these.thetas      <- theta0.samples[,,,page]
+                          these.ndts        <- ndt.samples[,,,page]
+                          these.lengths     <- driftL.samples[,,,page]
+                          these.bounds      <- bound.samples[,,,page]
+                          
+                          Z <- list(this.truth,
+                                    this.matrix.means,
+                                    this.matrix.sd,
+                                    this.matrix.MAPs,
+                                    this.matrix.rhats,
+                                    this.timer,
+                                    these.thetas,
+                                    these.ndts,
+                                    these.lengths,
+                                    these.bounds)
+                          names(Z) <- c("current.truth",
+                                        "current.matrix.means",
+                                        "current.matrix.sd",
+                                        "current.matrix.MAPs",
+                                        "current.matrix.rhats",
+                                        "current.timer",
+                                        "current.thetas",
+                                        "current.ndts",
+                                        "current.lengths",
+                                        "current.bounds")
+                          fileName <- paste(output.folder,
+                                            "subset",page,
+                                            "_n",n,
+                                            "a",a,
+                                            "b",b,
+                                            "m",m,
+                                            "s",s,".RData",sep="")
+                          save(Z, file=fileName)
+                          page <- page+1
+                    }
+                }
+            }
         }
     }
-
-colnames(rhats) <- names(Y$Rhats)
-save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
-save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
-save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
-save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
-save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
-save(timers, file = paste(output.folder,simstudy.Name,"timers.RData",sep=""))
-save(theta0.samples, file = paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
-save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
-save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
-save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
-
+    
+    colnames(rhats) <- names(Y$Rhats)
+    save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+    save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+    save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+    save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
+    save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+    save(timers, file = paste(output.folder,simstudy.Name,"timers.RData",sep=""))
+    save(theta0.samples, file = paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
+    save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
+    save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
+    save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
+}else{
+    load(paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"std.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"timers.RData",sep=""))
+    load(paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
+}
 
 ######################################################################################
 #####  CONVERGENCE CHECKS
 ######################################################################################
-hist(rhats)
-abline(v=1.05, col="red", lty=2)
-legend("top","Rhat = 1.05", lty=2, col="red", cex=0.4)
+rule <- 1.05
+bad.Rhat <- which(rhats>rule,arr.ind = TRUE)
 
-bad.Rhat <- which(rhats>1.04,arr.ind = TRUE)
-colnames(rhats[,bad.Rhat[,2],])
+hist(rhats)
+    abline(v=rule, col="red", lty=2)
+    legend("top",paste("Rhat = ",rule," | ",
+                       round(nrow(bad.Rhat)/prod(dim(rhats)),5),
+                       "% of chains"), lty=2, col="red", cex=0.4)
+    
+bad.Rhat.ID <- colnames(rhats[,bad.Rhat[,2],])
+table(bad.Rhat.ID)
 
 ######################################################################################
 ######            P L O T S                                  #########################
 ######################################################################################
-
-# if(test){
-#           load(paste(output.folder,"simStudy_trueValues.RData",sep=""))
-#           load(paste(output.folder,"simStudy_Rhats.RData",sep=""))
-#           load(paste(output.folder,"simStudy_meanPosteriors.RData",sep=""))
-#           load(paste(output.folder,"simStudy_std.RData",sep=""))
-#           #load(paste(output.folder,"simStudy_MAPs.RData",sep=""))
-#           load(paste(output.folder,"simStudy_timers.RData",sep=""))
-#           load(paste(output.folder,"simStudy_theta0.RData",sep=""))
-# }
-
 boxplot.perPar <- function(parameter.name, color="blue"){
-  par.levels <- table(array.True[,parameter.name])
-  par.values <- as.numeric(names(par.levels))
-  group.by.level <- matrix(NA,nrow=max(par.levels)*200,
-                           ncol=length(par.values))
-  colors <- paste(color,2:4,sep="")
-  for(i in 1:length(par.values)){
-          a <- par.values[i]
-          same.level <- array.True[,parameter.name]==a
-          group.by.level[,i] <- array.Retrieved[,parameter.name,same.level]
-      }
-  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
-  abline(h=par.values, col=colors, lty=2)
-  mtext(paste("Parameter:",parameter.name),3)
+        par.levels <- table(trueValues[,parameter.name])
+        par.values <- as.numeric(names(par.levels))
+        group.by.level <- matrix(NA,nrow=max(par.levels)*200,
+                                 ncol=length(par.values))
+        colors <- paste(color,2:4,sep="")
+        for(i in 1:length(par.values)){
+              a <- par.values[i]
+              same.level <- trueValues[,parameter.name]==a
+              group.by.level[,i] <- retrievedValues[,parameter.name,same.level]
+            }
+        boxplot(group.by.level, col=colors, pch=16, cex=0.5)
+        abline(h=par.values, col=colors, lty=2)
+        mtext(paste("Parameter:",parameter.name),3)
 }
 
-# boxplot.perPar("driftLength", "blue")
-# boxplot.perPar("ndt", "green")
-# boxplot.perPar("bound", "purple")
-# boxplot.perPar("driftAngle", "indianred")
+boxplot.perPar("driftLength", "blue")
+boxplot.perPar("ndt", "green")
+boxplot.perPar("bound", "purple")
+boxplot.perPar("driftAngle", "indianred")
