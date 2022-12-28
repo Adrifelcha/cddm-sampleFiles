@@ -183,7 +183,7 @@ if(test){
 ######## Create empty arrays to store the simulation output 
       # True parameter values used to generate data
         trueValues            <- array(NA, dim=c(possible.combinations,ncols))
-        colnames(trueValues)  <- c("trials",par.labels)
+        colnames(trueValues)  <- c(par.labels,"trials")
       # Posterior chains
         posterior.chains  <- array(NA,dim=c(nrows,npar,iterations,possible.combinations))
         theta0.samples    <- posterior.chains
@@ -206,10 +206,10 @@ if(test){
   
 ######## Run simulation
     page <- 1
-    for(m in 1:n.topIdx){
-        for(b in 1:a.topIdx){
-            for(n in 1:b.topIdx){
-                for(a in 1:m.topIdx){
+    for(m in 1:m.topIdx){
+        for(b in 1:b.topIdx){
+            for(n in 1:n.topIdx){
+                for(a in 1:a.topIdx){
                     for(s in 1:s.topIdx){
                         sampleSize       <-   sampleSize.list  [s]
                         true.driftAngle  <-   driftAngle.list  [a] 
@@ -217,11 +217,11 @@ if(test){
     	                  true.bound       <-   bound.list       [b]
     	                  true.nondecision <-   nondecision.list [n]
                            
-                        this.truth        <-  c(sampleSize,
-                                                true.driftLength,
+                        this.truth        <-  c(true.driftLength,
                                                 true.bound,
                                                 true.nondecision,
-                                                true.driftAngle)
+                                                true.driftAngle,
+                                                sampleSize)
                         trueValues[page,] <- this.truth
     		                  
                           for(i in 1:iterations){
@@ -270,10 +270,10 @@ if(test){
                                         "current.bounds")
                           fileName <- paste(output.folder,
                                             "subset",page,
-                                            "_n",n,
-                                            "a",a,
-                                            "b",b,
-                                            "m",m,
+                                            "_m",n,
+                                            "b",a,
+                                            "n",b,
+                                            "a",m,
                                             "s",s,".RData",sep="")
                           save(Z, file=fileName)
                           page <- page+1
