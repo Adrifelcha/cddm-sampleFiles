@@ -1,78 +1,55 @@
 ##########################################################
 # LOAD FUNCTIONS/PACKAGES
 ##########################################################
-######## Install/Load required R packages
-    # Required packages
-    list.of.packages <- c("R2jags", "magrittr", "rstan", "doParallel", 
-                          "tictoc", "readr", "foreach")
-    # Install if not already installed
-    new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-    if(length(new.packages) > 0){
-       install.packages(new.packages, dep=TRUE) 
-      }
-    # Load packages
-    for(package.i in list.of.packages){
-        suppressPackageStartupMessages(library(package.i, character.only = TRUE))
-        }
-
-###### Load R scripts with functions required to generate data
-    source("../Functions/generateRandomParameterValues.R")
-    source("../Functions/simulateDataCDDM.R")
-    source("../Functions/processJAGSsamples.R")
-
-###### Load JAGS modules
-    load.module("cddm")
+######## Load required R packages for parallel processing
+  library(foreach)
+  library(doParallel)
 
 ##########################################################
 # SIMULATION SETTINGS
 ##########################################################
-iterations <- 200
-
-# List of values to be used in simulation study
-sampleSize.list   <-  c(100, 500, 2500)
-driftAngle.list   <-  c(0.0, 2.0, 4.0)
-driftLength.list  <-  c(0.0, 1.0, 2.0)
-bound.list        <-  c(1.5, 2.0, 2.5)
-nondecision.list  <-  c(0.1, 0.2, 0.3)
-
-# Identify maximum valid index for every list
-s.topIdx  <-  length(sampleSize.list)
-a.topIdx  <-  length(driftAngle.list)
-m.topIdx  <-  length(driftLength.list)   # 'm' for magnitude
-b.topIdx  <-  length(bound.list)
-n.topIdx  <-  length(nondecision.list)
-possible.combinations <- s.topIdx * a.topIdx * m.topIdx * b.topIdx * n.topIdx
-
-# Settings to be passed into JAGS
-n.iter    = 2500
-n.burnin  = 500
-n.chains  = 4
-n.thin    = 1
-
-# Output setup
-output.folder <- "./parallel_seeds/"
-simstudy.Name <- "simStudy_"
+settings <- list(
+              iterations = 200,
+              sampleSize.list  =  c(100, 500, 2500),
+              driftAngle.list  =  c(0.0, 2.0, 4.0),
+              driftLength.list =  c(0.0, 1.0, 2.0),
+              bound.list       =  c(1.5, 2.0, 2.5),
+              nondecision.list =  c(0.1, 0.2, 0.3))
+settings <- c(settings,
+              s.topIdx  = length(settings$sampleSize.list),
+              a.topIdx  = length(settings$driftAngle.list),
+              m.topIdx  = length(settings$driftLength.list),   # 'm' for magnitude
+              b.topIdx  = length(settings$bound.list),
+              n.topIdx  = length(settings$nondecision.list))
+settings <- c(settings,
+              possible.combinations = settings$s.topIdx * settings$a.topIdx * settings$m.topIdx * settings$b.topIdx * settings$n.topIdx,
+              n.iter    = 2500,
+              n.burnin  = 500,
+              n.chains  = 4,
+              n.thin    = 1,
+              output.folder = "./parallel_seeds/",
+              simstudy.Name = "simStudy_")
 
 ################################################################
-# MAIN FUNCTIONS: Generating data and Recovering parameters
+# Define simulation functions
 ################################################################
-
-######## Function to GENERATE DATA
-generate <- function(seed) {
-        set.seed(seed)
-        X <-  cddm.simData(
-                            trials = sampleSize,
-                            drift.Angle = true.driftAngle,
-                            drift.Length = true.driftLength,	
-                            boundary = true.bound,
-                            ndt = true.nondecision)$data
-        output <- t(X)
-        return(output)
+######  1. Function to GENERATE DATA 
+####################################
+generate <- function(seed, sampleSize, true.driftAngle, true.driftLength, true.bound, true.nondecision) {
+    set.seed(seed)
+    X <-  cddm.simData(trials = sampleSize,
+                       drift.Angle = true.driftAngle,
+                       drift.Length = true.driftLength,	
+                       boundary = true.bound,
+                       ndt = true.nondecision)$data
+    output <- t(X)
+    return(output)
 }
 
-######## Function to RECOVER parameter values
-recover <- function(data) {
-      ### Write JAGS model  #########################
+######  2. Function to RECOVER PARAMETER VALUES
+###############################################
+recover <- function(data, settings) {
+      ########## Write JAGS model  #############################################
       modelFile <- "cddm_JAGSmodel.bug"
       write('
               data{
@@ -92,37 +69,44 @@ recover <- function(data) {
                       ter0   ~ dexp(1)T(, tmin)
                     }', 
             modelFile)
-      
-      ### General sampling settings
-      n.chains =  n.chains
-      n.iter   =  n.iter
-      n.burnin =  n.burnin
-      n.thin   =  n.thin
-      
       data <- list(X=data)
       parameters <- c("drift", "bound", "ter0", "theta0")
     
       ########## RUN MODEL ######################################################
-      tic()  # Set timer
-      samples <- jags(data = data, parameters.to.save = parameters, 
-                      model = modelFile, n.chains = n.chains, n.iter = n.iter, 
-                      n.burnin = n.burnin, n.thin = n.thin, DIC = T)
-      elapsed.time <- toc()$callback_msg   # Record time
-      clock <- parse_number(elapsed.time)  # Extract the seconds
+      tic <- clock::date_now(zone="UTC")
+      samples <- jags(data = data, 
+                      parameters.to.save = parameters,
+                      model = modelFile, 
+                      n.chains = settings$n.chains, 
+                      n.iter   = settings$n.iter, 
+                      n.burnin = settings$n.burnin, 
+                      n.thin   = settings$n.thin, 
+                      DIC = T)
+      toc <- clock::date_now(zone="UTC")
+      clock <- as.numeric(toc-tic, units="secs")  # Record time
       
-      ###########################################################################
-      # PROCESS SAMPLES
+      ########## PROCESS SAMPLES ################################################
       ### Extract samples per parameter
       driftLength.samples  <- samples$BUGSoutput$sims.array[,,"drift"]
       bound.samples        <- samples$BUGSoutput$sims.array[,,"bound"]
       ndt.samples          <- samples$BUGSoutput$sims.array[,,"ter0"]
       theta0.samples       <- samples$BUGSoutput$sims.array[,,"theta0"]
+      theta0.samples       <- theta0.samples %% (2*pi)
       
+      ### Compute circular mean
+      mu1 <- array(NA, dim=dim(theta0.samples))  # Create empty vectors
+      mu2 <- array(NA, dim=dim(theta0.samples))
+      for(i in 1:n.chains){
+          mu1[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu1
+          mu2[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu2
+          }
+      Mu1 <- mean(mu1)
+      Mu2 <- mean(mu2)
+      est.driftAngle   <- cddm.getVectorAngle(Mu1,Mu2)
       ### Compute mean posterior per parameter
       est.driftLength  <- mean( driftLength.samples )
       est.bound        <- mean( bound.samples       )
       est.nondecision  <- mean( ndt.samples         )
-      est.driftAngle   <- mean( theta0.samples      )
       mean.est <- c(est.driftLength, est.bound, est.nondecision, est.driftAngle)
       
       # Compute MAP per parameter
@@ -144,179 +128,173 @@ recover <- function(data) {
       Rhats <- apply(object,3,Rhat)
       
       # Prepare recovery output
-      output <- list(theta0.samples,
-                     driftLength.samples,
-                     bound.samples,
-                     ndt.samples,
-                     mean.est, 
-                     map.est,
-                     sd.est, 
-                     Rhats,
-                     clock)
-      names(output) <- c("theta0.samples",
-                         "driftLength.samples",
-                         "bound.samples",
-                         "ndt.samples",
-                         "mean.estimates", 
-                         "map.estimates",
-                         "std.estimates", 
-                         "Rhats",
-                         "time.elapsed")
-      
+      output <- list("mean.estimates" = mean.est, 
+                     "map.estimates"  = map.est,
+                     "std.estimates"  = sd.est,
+                     "Rhats" = Rhats,
+                     "time.elapsed" = clock)
 return(output)
 }
 
-###################################################################################
-##  Run the simulation
-###################################################################################
-######## Define size variables
-    # Parameter labels
-      par.labels <- c("driftLength","bound","ndt","driftAngle")
-    # No. of parameters
-      npar <- length(par.labels)
-    # Extensive no. of columns (for True value matrix and Rhats)
-      ncols <- npar+1
-    # Number of samples kept per chain
-      nrows <- n.iter-n.burnin
-    # Total number of samples per parameter
-      total.samples <- nrows*n.chains
+######  3. Function to RUN the SIMULATION
+#########################################
+run_simulation <- function(seed=i, settings){
+      ########## Load packages/scripts ##########################################
+      ### R packages
+      library(R2jags)
+      library(magrittr)
+      library(rstan)
+      library(readr)
+      ### R scripts with custom R functions
+      source("../Functions/generateRandomParameterValues.R")
+      source("../Functions/simulateDataCDDM.R")
+      source("../Functions/processJAGSsamples.R")
+      ### JAGS CDDM module
+      load.module("cddm")
 
-######## Create empty arrays to store the simulation output 
-    # True parameter values used to generate data
-      trueValues            <- array(NA, dim=c(possible.combinations,ncols))
-      colnames(trueValues)  <- c("trials",par.labels)
-    # Posterior chains
-      posterior.chains  <- array(NA,dim=c(nrows,npar,iterations,possible.combinations))
-      theta0.samples    <- posterior.chains
-      ndt.samples       <- posterior.chains
-      driftL.samples    <- posterior.chains
-      bound.samples     <- posterior.chains
-    # Mean posteriors
-      retrievedValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
-      colnames(retrievedValues) <- par.labels
-    # Standard deviation
-      retrievedValues_sd            <- array(NA,dim=c(iterations,npar,possible.combinations))
-      colnames(retrievedValues_sd)  <- par.labels
-    # MAP
-      mapValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
-      colnames(mapValues) <- par.labels
-    # R hats
-      rhats   <- array(NA,dim=c(iterations,ncols,possible.combinations))
-    # Seconds elapsed per simulation
-      timers  <- array(NA,dim=c(iterations,possible.combinations))
-
-######## Locate parameter samples in parallel output
-    theta.1st <- 19
-    theta.last <- (theta.1st-1)+total.samples
-    ndt.1st <- 1+theta.last
-    ndt.last <-(ndt.1st-1)+total.samples
-    length.1st <- ndt.last+1
-    length.last <- (length.1st-1)+total.samples
-    bound.1st <- length.last+1
-    bound.last <- (bound.1st-1)+total.samples
-
-######## Define clusters to run in parallel
-    my.cluster <- parallel::makeCluster(
-                          4, 
-                          type = "FORK"
-                  )
-    doParallel::registerDoParallel(cl = my.cluster)
-    
-######## Run simulation
-page <- 1
-for(m in 1:m.topIdx){
-    for(b in 1:b.topIdx){
-        for(n in 1:n.topIdx){
-            for(a in 1:a.topIdx){
-                for(s in 1:s.topIdx){
-                    sampleSize       <-   sampleSize.list  [s]
-                    true.driftAngle  <-   driftAngle.list  [a] 
-	                  true.driftLength <-   driftLength.list [m]
-	                  true.bound       <-   bound.list       [b]
-	                  true.nondecision <-   nondecision.list [n]
-                     
-                    this.truth        <-  c(sampleSize,
-                                            true.driftLength,
-                                            true.bound,
-                                            true.nondecision,
-                                            true.driftAngle)
-                    trueValues[page,] <-  this.truth
-	                  
-                    output <- foreach(i = 1:iterations, .combine = 'rbind') %dopar% {
-                                      X <-  generate(seed = i)
-                                      Y <-  recover(data = X)
-                                      output <- c(Y$mean.estimates,
-                                                  Y$std.estimates,
-                                                  Y$map.estimates,
-                                                  Y$time.elapsed,
-                                                  Y$Rhats,
-                                                  Y$theta0.samples,
-                                                  Y$ndt.samples,
-                                                  Y$driftLength.samples,
-                                                  Y$bound.samples)
-                              }
-                    
-                    this.matrix.means <- output[,1:4]
-                    this.matrix.sd    <- output[,5:8]
-                    this.matrix.MAPs  <- output[,9:12]
-                    this.timer        <- output[,13]
-                    this.matrix.rhats <- output[,14:18]
-                    these.thetas      <- matrix(output[,theta.1st:theta.last],byrow=TRUE,nrow=nrows,ncol=n.chains)
-                    these.ndts        <- matrix(output[,ndt.1st:ndt.last],byrow=TRUE,nrow=nrows,ncol=n.chains)
-                    these.lengths     <- matrix(output[,length.1st:length.last],byrow=TRUE,nrow=nrows,ncol=n.chains)
-                    these.bounds      <- matrix(output[,bound.1st:bound.last],byrow=TRUE,nrow=nrows,ncol=n.chains)
-                    
-                        Z     <- list(this.truth,
-                                        this.matrix.means,
-                                        this.matrix.sd,
-                                        this.matrix.MAPs,
-                                        this.matrix.rhats,
-                                        this.timer,
-                                        these.thetas,
-                                        these.ndts,
-                                        these.lengths,
-                                        these.bounds)
-                  names(Z)    <- c("current.truth",
-                                   "current.matrix.means",
-                                   "current.matrix.sd",
-                                   "current.matrix.MAPs",
-                                   "current.matrix.rhats",
-                                   "current.timer",
-                                   "current.thetas",
-                                   "current.ndts",
-                                   "current.lengths",
-                                   "current.bounds")
-                    
-                    fileName  <- paste(output.folder,
-                                       "set",
-                                       page,
-                                       "_",
-                                       "n",n,
-                                       "a",a,
-                                       "b",b,
-                                       "m",m,
-                                       "s",s,".RData",sep="")
-                    save(Z, file = fileName)
-                    page <- page+1
-                }
-            }
-        }
-    }
+      ########## Load relevant settings ##########################################
+      # List of values to be used in simulation study
+      sampleSize.list   <-  settings$sampleSize.list
+      driftAngle.list   <-  settings$driftAngle.list
+      driftLength.list  <-  settings$driftLength.list
+      bound.list        <-  settings$bound.list
+      nondecision.list  <-  settings$nondecision.list
+      # Identify maximum valid index for every list
+      s.topIdx  <-  settings$s.topIdx
+      a.topIdx  <-  settings$a.topIdx
+      m.topIdx  <-  settings$m.topIdx
+      b.topIdx  <-  settings$b.topIdx
+      n.topIdx  <-  settings$n.topIdx
+      possible.combinations <- settings$possible.combinations
+      
+      ########## Run simulation for every Parameter combination #################
+      out <- list()
+      for(s in 1:s.topIdx){
+          for(m in 1:m.topIdx){
+              for(b in 1:b.topIdx){
+                  for(n in 1:n.topIdx){
+                      for(a in 1:a.topIdx){
+                            sampleSize       <-   sampleSize.list  [s]
+                            true.driftAngle  <-   driftAngle.list  [a] 
+                            true.driftLength <-   driftLength.list [m]
+                            true.bound       <-   bound.list       [b]
+                            true.nondecision <-   nondecision.list [n]
+                
+                            this.truth        <-  c(true.driftLength,
+                                                    true.bound,
+                                                    true.nondecision,
+                                                    true.driftAngle)
+                            
+                            X   <-  generate(seed = i,
+                                           sampleSize = sampleSize,
+                                           true.driftAngle = true.driftAngle,
+                                           true.driftLength = true.driftLength,
+                                           true.bound = true.bound,
+                                           true.nondecision = true.nondecision)
+                            Y   <-  recover(data = X, settings)
+                            out <- rbind(out,list(seed = i,
+                                                  n = sampleSize,
+                                                  true.values    = this.truth,
+                                                  mean.estimates = Y$mean.estimates,
+                                                  std.estimates  = Y$std.estimates,
+                                                  map.estimates  = Y$map.estimates,
+                                                  elapsed.time   = Y$time.elapsed,
+                                                  rhats = Y$Rhats))
+                      }
+                  }
+              }
+          }
+      }
+return(out)      
 }
 
-parallel::stopCluster(cl = my.cluster)
-colnames(rhats) <- names(Y$Rhats)
+######  3. Function to STORE the OUTPUT
+#######################################
+store_output <- function(output, settings){
+      ########## Load relevant Settings #########################################
+      ### R packages
+      iterations            <- settings$iterations
+      possible.combinations <- settings$possible.combinations
+      output.folder         <- settings$output.folder
+      studyName             <- settings$studyName
+      n.iter    <-  settings$n.iter
+      n.burnin  <-  settings$n.burnin
+      
+      ########## Create empty arrays to save output #############################
+      ### Size variables
+      # Parameter labels
+      par.labels <- c("driftLength","bound","ndt","driftAngle")
+      # No. of parameters
+      npar <- length(par.labels)
+      # Extensive no. of columns (for True value matrix and Rhats)
+      ncols <- npar+1
+      # Number of samples kept per chain
+      nrows <- n.iter-n.burnin
+      ### Array 1: True parameter values used to generate data
+      trueValues            <- array(NA, dim=c(possible.combinations,npar))
+      colnames(trueValues)  <- par.labels
+      ### Array 2: Mean posteriors
+      retrievedValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
+      colnames(retrievedValues) <- par.labels
+      ### Array 3: Standard deviation
+      retrievedValues_sd            <- array(NA,dim=c(iterations,npar,possible.combinations))
+      colnames(retrievedValues_sd)  <- par.labels
+      ### Array 4: MAP
+      mapValues           <- array(NA,dim=c(iterations,npar,possible.combinations))
+      colnames(mapValues) <- par.labels
+      ### Array 5: R hats
+      rhats   <- array(NA,dim=c(iterations,ncols,possible.combinations))
+      ### Array 6: Seconds elapsed per simulation
+      timers  <- array(NA,dim=c(iterations,possible.combinations))
+      ### Array 7: Record seeds
+      seeds <- array(NA,dim=c(iterations,possible.combinations))
+      ### Array 8: Record sample sizes
+      size <- array(NA,dim=c(iterations,possible.combinations))
+      
+      out.size <- possible.combinations * iterations
+      for(set in 1:possible.combinations){
+          J <- seq(set,out.size,possible.combinations) 
+          for(i in 1:iterations){
+              j <- J[i]
+              S <- output[j,]
+              seeds[i,set] <- S$seed
+              size[i,set] <- S$n
+              timers[i,set] <- S$elapsed.time
+              rhats[i,,set] <- S$rhats
+              trueValues[set,] <- S$true.values
+              retrievedValues[i,,set] <- S$mean.estimates
+              retrievedValues_sd[i,,set] <- S$std.estimates
+              mapValues[i,,set] <-S$map.estimates
+          }
+      }
+      
+      save(timers, file = paste(output.folder,studyName,"_timers.RData",sep=""))
+      save(seeds, file = paste(output.folder,studyName,"_seeds.RData",sep=""))
+      save(size, file = paste(output.folder,studyName,"_sizes.RData",sep=""))
+      colnames(rhats) <- names(S$Rhats)
+      save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
+      save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
+      save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
+      save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
+      save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+}
 
-save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
-save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
-save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
-save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
-save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
-save(timers, file = paste(output.folder,simstudy.Name,"timers.RData",sep=""))
-save(theta0.samples, file = paste(output.folder,simstudy.Name,"theta0.RData",sep=""))
-save(ndt.samples, file = paste(output.folder,simstudy.Name,"ndt.RData",sep=""))
-save(driftL.samples, file = paste(output.folder,simstudy.Name,"driftLength.RData",sep=""))
-save(bound.samples, file = paste(output.folder,simstudy.Name,"bound.RData",sep=""))
+################################################################
+# Define simulation functions
+################################################################
+cores       <-  detectCores()
+my.cluster  <-  makeCluster(cores[1]-6)
+
+registerDoParallel(cl = my.cluster)
+output <- foreach(i = 1:settings$iterations, 
+                  .errorhandling = "pass",
+                  .combine = 'rbind'
+                  ) %dopar% {
+                  Z <- run.Sim(seed = i, settings)
+                  }
+stopCluster(cl = my.cluster)
+
+store_output(output,settings)
 
 ######################################################################################
 #####  CONVERGENCE CHECKS
