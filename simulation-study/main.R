@@ -206,11 +206,11 @@ if(test){
   
 ######## Run simulation
     page <- 1
-    for(m in 1:m.topIdx){
-        for(b in 1:b.topIdx){
-            for(n in 1:n.topIdx){
-                for(a in 1:a.topIdx){
-                    for(s in 1:s.topIdx){
+    for(s in 1:s.topIdx){
+        for(m in 1:m.topIdx){
+            for(b in 1:b.topIdx){
+                for(n in 1:n.topIdx){
+                    for(a in 1:a.topIdx){
                         sampleSize       <-   sampleSize.list  [s]
                         true.driftAngle  <-   driftAngle.list  [a] 
     	                  true.driftLength <-   driftLength.list [m]
