@@ -9,10 +9,10 @@
 # SIMULATION SETTINGS
 ##########################################################
 settings <- list(
-              iterations = 200,
-              sampleSize.list  =  c(100, 500, 2500),
+              iterations = 50,
+              sampleSize.list  =  c(200),
               driftAngle.list  =  c(0.0, 2.0, 4.0),
-              driftLength.list =  c(0.0, 1.0, 2.0),
+              driftLength.list =  c(0.01, 1.0, 2.0),
               bound.list       =  c(1.5, 2.0, 2.5),
               nondecision.list =  c(0.1, 0.2, 0.3))
 settings <- c(settings,
@@ -27,8 +27,8 @@ settings <- c(settings,
               n.burnin  = 500,
               n.chains  = 4,
               n.thin    = 1,
-              output.folder = "./parallel_seeds/",
-              simstudy.Name = "simStudy_")
+              output.folder = "./output_ene-3/",
+              simstudy.Name = "sim_")
 
 ################################################################
 # Define simulation functions
@@ -48,9 +48,9 @@ generate <- function(seed, sampleSize, true.driftAngle, true.driftLength, true.b
 
 ######  2. Function to RECOVER PARAMETER VALUES
 ###############################################
-recover <- function(data, settings) {
+recover <- function(data, settings, seed) {
       ########## Write JAGS model  #############################################
-      modelFile <- "cddm_JAGSmodel.bug"
+      modelFile <- paste("cddm_seed-", seed, ".bug",sep="")
       write('
               data{
                     tmin <- 0.95 * min(X[2,])
@@ -92,11 +92,12 @@ recover <- function(data, settings) {
       ndt.samples          <- samples$BUGSoutput$sims.array[,,"ter0"]
       theta0.samples       <- samples$BUGSoutput$sims.array[,,"theta0"]
       theta0.samples       <- theta0.samples %% (2*pi)
+      samples$BUGSoutput$sims.array[,,"theta0"] <- theta0.samples 
       
       ### Compute circular mean
       mu1 <- array(NA, dim=dim(theta0.samples))  # Create empty vectors
       mu2 <- array(NA, dim=dim(theta0.samples))
-      for(i in 1:n.chains){
+      for(i in 1:settings$n.chains){
           mu1[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu1
           mu2[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu2
           }
@@ -138,7 +139,7 @@ return(output)
 
 ######  3. Function to RUN the SIMULATION
 #########################################
-run_simulation <- function(seed=i, settings){
+run_simulation <- function(seed, settings){
       ########## Load packages/scripts ##########################################
       ### R packages
       library(R2jags)
@@ -165,12 +166,18 @@ run_simulation <- function(seed=i, settings){
       m.topIdx  <-  settings$m.topIdx
       b.topIdx  <-  settings$b.topIdx
       n.topIdx  <-  settings$n.topIdx
+      output.folder         <- settings$output.folder
       possible.combinations <- settings$possible.combinations
+      
+      ########## Print a file to indicate the start of a new seed ###############
+      init.File <- paste(output.folder,"seed-",seed,"_start.txt",sep="")
+      write('Seed has been initiated', init.File)
       
       ########## Run simulation for every Parameter combination #################
       out <- list()
       for(s in 1:s.topIdx){
           for(m in 1:m.topIdx){
+              write(paste("m =",m), file=init.File, append=TRUE)
               for(b in 1:b.topIdx){
                   for(n in 1:n.topIdx){
                       for(a in 1:a.topIdx){
@@ -185,14 +192,14 @@ run_simulation <- function(seed=i, settings){
                                                     true.nondecision,
                                                     true.driftAngle)
                             
-                            X   <-  generate(seed = i,
+                            X   <-  generate(seed = seed,
                                            sampleSize = sampleSize,
                                            true.driftAngle = true.driftAngle,
                                            true.driftLength = true.driftLength,
                                            true.bound = true.bound,
                                            true.nondecision = true.nondecision)
-                            Y   <-  recover(data = X, settings)
-                            out <- rbind(out,list(seed = i,
+                            Y   <-  recover(data = X, settings = settings, seed = seed)
+                            out <- rbind(out,list(seed = seed,
                                                   n = sampleSize,
                                                   true.values    = this.truth,
                                                   mean.estimates = Y$mean.estimates,
@@ -205,6 +212,10 @@ run_simulation <- function(seed=i, settings){
               }
           }
       }
+      
+      ########## Print a file to indicate the end of a the seed ###############
+      end.File <- paste(output.folder,"seed-",seed,"_end.txt",sep="")
+      write('Seed has ended running', init.File)
 return(out)      
 }
 
@@ -216,7 +227,7 @@ store_output <- function(output, settings){
       iterations            <- settings$iterations
       possible.combinations <- settings$possible.combinations
       output.folder         <- settings$output.folder
-      studyName             <- settings$studyName
+      studyName             <- settings$simstudy.Name
       n.iter    <-  settings$n.iter
       n.burnin  <-  settings$n.burnin
       
@@ -248,9 +259,7 @@ store_output <- function(output, settings){
       timers  <- array(NA,dim=c(iterations,possible.combinations))
       ### Array 7: Record seeds
       seeds <- array(NA,dim=c(iterations,possible.combinations))
-      ### Array 8: Record sample sizes
-      size <- array(NA,dim=c(iterations,possible.combinations))
-      
+   
       out.size <- possible.combinations * iterations
       for(set in 1:possible.combinations){
           J <- seq(set,out.size,possible.combinations) 
@@ -258,7 +267,6 @@ store_output <- function(output, settings){
               j <- J[i]
               S <- output[j,]
               seeds[i,set] <- S$seed
-              size[i,set] <- S$n
               timers[i,set] <- S$elapsed.time
               rhats[i,,set] <- S$rhats
               trueValues[set,] <- S$true.values
@@ -270,38 +278,89 @@ store_output <- function(output, settings){
       
       save(timers, file = paste(output.folder,studyName,"_timers.RData",sep=""))
       save(seeds, file = paste(output.folder,studyName,"_seeds.RData",sep=""))
-      save(size, file = paste(output.folder,studyName,"_sizes.RData",sep=""))
-      colnames(rhats) <- names(S$Rhats)
-      save(rhats, file = paste(output.folder,simstudy.Name,"Rhats.RData",sep=""))
-      save(trueValues, file = paste(output.folder,simstudy.Name,"trueValues.RData",sep=""))
-      save(retrievedValues, file = paste(output.folder,simstudy.Name,"meanPosteriors.RData",sep=""))
-      save(retrievedValues_sd, file = paste(output.folder,simstudy.Name,"std.RData",sep=""))
-      save(mapValues, file = paste(output.folder,simstudy.Name,"MAPs.RData",sep=""))
+      colnames(rhats) <- names(S$rhats)
+      save(rhats, file = paste(output.folder,studyName,"Rhats.RData",sep=""))
+      save(trueValues, file = paste(output.folder,studyName,"trueValues.RData",sep=""))
+      save(retrievedValues, file = paste(output.folder,studyName,"meanPosteriors.RData",sep=""))
+      save(retrievedValues_sd, file = paste(output.folder,studyName,"std.RData",sep=""))
+      save(mapValues, file = paste(output.folder,studyName,"MAPs.RData",sep=""))
+      save(settings, file = paste(output.folder,studyName,"settings.RData",sep=""))
 }
 
 ################################################################
 # Define simulation functions
 ################################################################
 cores       <-  detectCores()
-my.cluster  <-  makeCluster(cores[1]-6)
+my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 output <- foreach(i = 1:settings$iterations, 
-                  .errorhandling = "pass",
-                  .combine = 'rbind'
+                    #.errorhandling = "pass",
+                    .combine = 'rbind'
                   ) %dopar% {
-                  Z <- run.Sim(seed = i, settings)
+                    Z <- run_simulation(seed = i, settings)
                   }
 stopCluster(cl = my.cluster)
 
 store_output(output,settings)
 
 ######################################################################################
+#####  LOAD OUTPUT
+######################################################################################
+output.File <- settings$output.folder
+
+load(paste(output.File,"/sim_Rhats.RData",sep=""))
+load(paste(output.File,"/sim_trueValues.RData",sep=""))
+load(paste(output.File,"/sim_std.RData",sep=""))
+load(paste(output.File,"/sim_meanPosteriors.RData",sep=""))
+load(paste(output.File,"/sim_MAPs.RData",sep=""))
+load(paste(output.File,"/sim__timers.RData",sep=""))
+load(paste(output.File,"/sim__seeds.RData",sep=""))
+
+######################################################################################
 #####  CONVERGENCE CHECKS
 ######################################################################################
-hist(rhats)
-abline(v=1.05, col="red", lty=2)
-legend("top","Rhat = 1.05", lty=2, col="red", cex=0.4)
+rule <- 1.05
+bad.Rhat <- which(rhats>rule,arr.ind = TRUE)
 
-bad.Rhat <- which(rhats>1.04,arr.ind = TRUE)
-colnames(rhats[,bad.Rhat[,2],])
+test.rhat <- nrow(bad.Rhat)==0
+
+if(!test.rhat){
+      hist(rhats[rhats>rule],breaks=1000)
+      abline(v=rule, col="red", lty=2)
+      
+      hist(rhats,breaks=1000)
+      abline(v=rule, col="red", lty=2)
+      legend("top",paste("Rhat = ",rule," | ",
+                         (round(nrow(bad.Rhat)/prod(dim(rhats)),5))*100,
+                         "% of chains"), lty=2, col="red", cex=0.4)
+      
+      bad.Rhat.ID <- colnames(rhats[,bad.Rhat[,2],])
+      table(bad.Rhat.ID)
+}else{
+      paste("No Rhat greater than ", rule, sep="")      
+}
+
+######################################################################################
+######            P L O T S                                  #########################
+######################################################################################
+boxplot.perPar <- function(trueValues,parameter.name, color="blue"){
+  par.levels <- table(trueValues[,parameter.name])
+  par.values <- as.numeric(names(par.levels))
+  group.by.level <- matrix(NA,nrow=max(par.levels)*settings$iterations,
+                           ncol=length(par.values))
+  colors <- paste(color,2:4,sep="")
+  for(i in 1:length(par.values)){
+    a <- par.values[i]
+    same.level <- trueValues[,parameter.name]==a
+    group.by.level[,i] <- retrievedValues[,parameter.name,same.level]
+  }
+  boxplot(group.by.level, col=colors, pch=16, cex=0.5)
+  abline(h=par.values, col=colors, lty=2)
+  mtext(paste("Parameter:",parameter.name),3)
+}
+
+boxplot.perPar("driftLength", "blue")
+boxplot.perPar("ndt", "green")
+boxplot.perPar("bound", "purple")
+boxplot.perPar("driftAngle", "indianred")
