@@ -261,3 +261,4 @@ cddm.plotData <- function(randomWalk.bivariateData){
   
   par(mfrow = c(1,1)) #As a precaution, go back to single plot spaces
 }
+
