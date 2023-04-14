@@ -96,7 +96,7 @@ recover <- function(data, settings) {
       ### Compute circular mean
       mu1 <- array(NA, dim=dim(theta0.samples))  # Create empty vectors
       mu2 <- array(NA, dim=dim(theta0.samples))
-      for(i in 1:n.chains){
+      for(i in 1:settings$n.chains){
           mu1[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu1
           mu2[,i] <- cddm.polarToRect(theta0.samples[,i],driftLength.samples[,i])$mu2
           }
@@ -280,17 +280,17 @@ store_output <- function(output, settings){
 }
 
 ################################################################
-# Define simulation functions
+# Run simulation
 ################################################################
 cores       <-  detectCores()
-my.cluster  <-  makeCluster(cores[1]-6)
+my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 output <- foreach(i = 1:settings$iterations, 
                   .errorhandling = "pass",
                   .combine = 'rbind'
                   ) %dopar% {
-                  Z <- run.Sim(seed = i, settings)
+                  Z <- run_simulation(seed = i, settings)
                   }
 stopCluster(cl = my.cluster)
 
