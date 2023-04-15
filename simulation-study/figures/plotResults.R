@@ -63,10 +63,10 @@ makePlot = function(true.vector, retrieved.matrix,
   ylim <- DOYrange
   xlab=""
   
-  ylab <- bquote(.(parameter.name) = mu)
+  levels.label <- paste("level", 1:numberOfHists)
   plot(c(0, 5), DOYrange, type = "n", xlim=xlim, ylim=ylim,
        ann = FALSE, axes = FALSE, xaxs = "i", yaxs = "i")
-  axis(1, 1:numberOfHists, expression(paste(greek.letter,"=",true.vector,sep=" ")),
+  axis(1, 1:numberOfHists, levels.label,
        cex.axis = 1.2, col = axisCol)
   mtext(side = 1, outer = F, line = 3, xlab, cex = 1.2)
   y.seq = format(round(seq(DOYrange[1],DOYrange[2],length.out=10),digits = 2), nsmall = 1)
