@@ -74,6 +74,7 @@ makePlot = function(true.vector, retrieved.matrix,
        at = y.seq, labels = y.seq, las=2)
   mtext(side = 2, outer = F, line = 2.8, ylab, cex = 1.2)
   box(bty = "o", col = axisCol)
+  abline(h=true.vector, lty=2)
   
   biggestDensity <- max(unlist(lapply(histList, function(h){max(h[[4]])})))
   xscale <- binWidth * .9 / biggestDensity
