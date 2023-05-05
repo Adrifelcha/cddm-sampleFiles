@@ -94,7 +94,7 @@ makePlot = function(true.vector, retrieved.matrix,
        line = -0.45, tick=FALSE, las=2)
   mtext(side = 2, outer = F, line = 2.2, ylab, cex = 1.3)
   #box(bty = "o", col = axisCol)
-  if(!is.na(true.vector)>0){
+  if(sum(!is.na(true.vector))>0){
       abline(h=true.vector, lty=2, col = hor.col)
     }
   
