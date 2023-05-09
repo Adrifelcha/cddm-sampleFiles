@@ -227,7 +227,7 @@ makePlot(true.vector = driftLength$par.values,
          #group.Names = c(expression(paste(delta, " = ", 0.01)),
          #                expression(paste(delta, " = ", 1.0)),
          #                expression(paste(delta, " = ", 2.0))),
-         ylim=c(-0.1,3), fillCol = "#ECC857",
+         ylim=c(0,3), fillCol = "#ECC857",
          internal.margin.X = 0.7, hor.col = legend.col)
 
 driftAngle$par.values[3] <- driftAngle$par.values[3] - 2*pi
