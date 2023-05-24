@@ -142,6 +142,7 @@ makePlot = function(true.vector, retrieved.matrix, binWidth = 0.5,
                     ylab.cex = 1.3, xlab = NA, xlab.cex = 1.2,
                     fillCol="indianred4", bg.color = "gray96",
                     hor.col1="gray60", hor.col2 = "black", 
+                    n.height = 0.25, n.center = 1.5,
                     output.Folders = NA, add.N = FALSE, cex.size = 1.2,
                     group.Names = NA, internal.margin.X = NA){
   data = retrieved.matrix
@@ -229,7 +230,7 @@ makePlot = function(true.vector, retrieved.matrix, binWidth = 0.5,
           lines(c(simSep[sep],simSep[sep]),ylim, lty=1, col = "black")
       }
       if(add.N){
-        text(simSep-1.5,ylim.Plot[2]+0.25,paste("n = ",get.N, sep=""),
+        text(simSep-n.center,ylim.Plot[2]+n.height,paste("n = ",get.N, sep=""),
              cex=xlab.cex*1.4, xpd=NA)
       }
   }
