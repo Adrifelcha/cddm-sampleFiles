@@ -1,0 +1,12 @@
+
+          model{
+                # Likelihood
+                  for (i in 1:N) {
+                       X[i] ~ dnorm(mu,lambda)
+                  }
+                    
+                # Priors
+                  mu  ~ dnorm(0,0.1)
+                  sigma ~ dunif(0.01,10)
+                  lambda <- pow(sigma,-2)
+                }
