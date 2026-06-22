@@ -150,12 +150,9 @@ cddm.coordToDegrees <-  function(coord){
 # Simulate data from the 4 parameters used to implement the cddm jags 
 # module (with default values for the drift.Coefficient and dt)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-cddm.simData <- function(trials, drift.Angle, drift.Length, boundary, ndt=0.1, drift.Coeff=1, dt=0.0015){
-  
-  Mu <- cddm.polarToRect(drift.Angle,drift.Length)
-  mu1 <- Mu$mu1
-  mu2 <-Mu$mu2
-  
+
+### Cartesian implementation
+cddm.simData.cart <- function(trials, mu1, mu2, boundary, ndt=0.1, drift.Coeff=1, dt=0.0015){
   randomWalk <-  cddm.randomWalk(trials=trials,mu1=mu1,mu2=mu2,boundary=boundary,
                                  ndt=ndt,drift.Coeff=drift.Coeff,dt=dt)
   RT <- randomWalk$RT
@@ -174,6 +171,23 @@ cddm.simData <- function(trials, drift.Angle, drift.Length, boundary, ndt=0.1, d
   
   return(output)
 }
+
+### Polar coordinate implementation
+cddm.simData <- function(trials, drift.Angle, drift.Length, boundary, ndt=0.1, drift.Coeff=1, dt=0.0015){
+  Mu <- cddm.polarToRect(drift.Angle,drift.Length)
+  mu1 <- Mu$mu1
+  mu2 <-Mu$mu2
+  output <- cddm.simData.cart(trials = trials,
+                              mu1 = mu1, mu2 = mu2,
+                              boundary = boundary,
+                              ndt = ndt,
+                              drift.Coeff = drift.Coeff,
+                              dt = dt)
+  return(output)
+}
+
+
+
 
 ############################################################################
 #####  Plotting functions
