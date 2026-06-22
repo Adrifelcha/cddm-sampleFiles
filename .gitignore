@@ -1,0 +1,6 @@
+
+.Rhistory
+*.RData
+*.RDS
+simulation-study/output_multiRuns/
+simulation-study/silly-parallel-runs/
